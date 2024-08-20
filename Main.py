@@ -21,6 +21,7 @@ import uuid
 import hashlib
 from urllib.parse import urlencode
 import pandas as pd
+import requests
 
 Access_Key = ""
 Secret_Key = ""
@@ -44,7 +45,7 @@ def Authorization() :
     authorization_token = 'Bearer {}'.format(jwt_token)
 
 #파라미터가 있는 경우(query => 파라미터의 자료형 중 배열이 존재하는 경우)
-def Authorization(parms) :
+def Authorization_Parms(parms) :
     query = {
         #"key[]": ["value1", "value2", "value3"]  # 파라미터의 자료형 중 배열이 존재하는 경우
         "key[]": parms # 파라미터의 자료형 중 배열이 존재하는 경우
@@ -64,8 +65,67 @@ def Authorization(parms) :
     jwt_token = jwt.encode(payload, Secret_Key)
     authorization_token = 'Bearer {}'.format(jwt_token)
 
+def Market_Data() :
+    # API 요청 URL
+    url = "https://api.upbit.com/v1/market/all"
+
+    # GET 요청 보내기
+    response = requests.get(url)
+
+    # 응답 상태 코드 확인
+    print(f"Status Code: {response.status_code}")
+
+    # 응답 데이터 출력 (JSON 형식으로 파싱)
+    if response.status_code == 200:
+        data = response.json()  # JSON 응답을 Python 객체로 변환
+        df = pd.DataFrame(data)
+        print(df)
+    else:
+        print(f"Failed to retrieve data: {response.status_code}")
+
+def Market_Data_Specific(ticker) :
+    # API 요청 URL
+    url = f"https://api.upbit.com/v1/ticker?markets={ticker}"
+
+    # GET 요청 보내기
+    response = requests.get(url)
+
+    # 응답 상태 코드 확인
+    print(f"Status Code: {response.status_code}")
+
+    # 응답 데이터 출력 (JSON 형식으로 파싱)
+    if response.status_code == 200:
+        data = response.json()  # JSON 응답을 Python 객체로 변환
+        df = pd.DataFrame(data)
+        print(df)
+    else:
+        print(f"Failed to retrieve data: {response.status_code}")
+
+def candle(type, ticker, count) :
+    # API 요청 URL
+    url = f"https://api.upbit.com/v1/candles/minutes/{type}?market={ticker}&count={count}"
+
+    # GET 요청 보내기
+    response = requests.get(url)
+
+    # 응답 상태 코드 확인
+    print(f"Status Code: {response.status_code}")
+
+    # 응답 데이터 출력 (JSON 형식으로 파싱)
+    if response.status_code == 200:
+        data = response.json()  # JSON 응답을 Python 객체로 변환
+        df = pd.DataFrame(data)
+        print(df)
+        print(df.columns)
+    else:
+        print(f"Failed to retrieve data: {response.status_code}")
+
+
 def main():
     file_load()
+    Market_Data()
+    Market_Data_Specific("KRW-BTC")
+    candle(1,"KRW-BTC",5)
 
 if __name__ == "__main__":
     main()
