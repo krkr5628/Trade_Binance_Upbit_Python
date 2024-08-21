@@ -16,12 +16,23 @@
 #out_of_scope : 기능 신청 안함
 #호가표 존재 빢쏌
 
+import pandas as pd
+import numpy as np
+
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+
+import torch
+import torch.nn as nn
+
+from urllib.parse import urlencode
+import requests
+
 import jwt
 import uuid
 import hashlib
-from urllib.parse import urlencode
-import pandas as pd
-import requests
 
 Access_Key = ""
 Secret_Key = ""
