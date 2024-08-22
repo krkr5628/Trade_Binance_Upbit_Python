@@ -67,17 +67,10 @@ def candle(type, ticker, count) :
 
     # GET 요청 보내기
     response = requests.get(url)
-
-    # 응답 상태 코드 확인
-    print(f"Status Code: {response.status_code}")
-
-    # 응답 데이터 출력 (JSON 형식으로 파싱)
-    if response.status_code == 200:
-        data = response.json()  # JSON 응답을 Python 객체로 변환
-        df = pd.DataFrame(data)
-        print(df)
-    else:
-        print(f"Failed to retrieve data: {response.status_code}")
+    # print(f"Status Code: {response.status_code}")
+    data = response.json()
+    df = pd.DataFrame(data)
+    return df
 
 #계좌 보유 현황
 def hold_account() :

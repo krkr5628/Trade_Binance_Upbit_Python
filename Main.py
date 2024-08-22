@@ -20,10 +20,13 @@ import function
 
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtWidgets import QApplication, QMainWindow, QHeaderView
+from PySide6.QtCore import QAbstractTableModel, Qt, QTimer, QDateTime
 from Main_ui import Ui_MainWindow
+
 
 
 import tkinter as tk
@@ -109,45 +112,34 @@ def window_main() :
     # 루프 시작
     root.mainloop()
 
-def window_ticker() :
-    # 루트 창 생성
-    root = tk.Tk()
+class DataFrameModel(QAbstractTableModel):
+    def __init__(self, df=pd.DataFrame(), parent=None):
+        super(DataFrameModel, self).__init__(parent)
+        self._df = df
 
-    # 창의 제목 설정
-    root.title("TICKER LIST")
+    def rowCount(self, parent=None):
+        return len(self._df)
 
-    #TICKER_TOTAL
-    rst_df = function.Market_Data()  # TOTAL TICKER
+    def columnCount(self, parent=None):
+        return len(self._df.columns)
 
-    if rst_df != 0 :
-        # 내부 프레임 생성
-        frame = tk.Frame(root)
-        frame.pack(expand=True, fill='both', padx=10, pady=10)
+    def data(self, index, role=Qt.DisplayRole):
+        if index.isValid():
+            if role == Qt.DisplayRole:
+                return str(self._df.iloc[index.row(), index.column()])
+        return None
 
-        # Treeview 위젯 생성 및 프레임에 배치
-        tree = ttk.Treeview(frame)
-        tree.pack(expand=True, fill='both')
-
-        tree["columns"] = list(rst_df.columns)
-        tree["show"] = "headings"
-
-        for col in rst_df.columns:
-            tree.heading(col, text=col)
-            tree.column(col, width=100)
-
-        # 기존 데이터 삭제
-        for row in tree.get_children():
-            tree.delete(row)
-
-        # 새로운 데이터 삽입
-        for index, row in rst_df.iterrows():
-            tree.insert("", "end", values=list(row))
-
-    #TICKER_DETAIL
-    #function.Market_Data_Specific("KRW-SOL")  # SPECFIC TIKCER INFO
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return self._df.columns[section]
+            elif orientation == Qt.Vertical:
+                return self._df.index[section]
+        return None
 
 def main():
     function.file_load() #API KEYS LOAD
+
     #
     app = QApplication(sys.argv)
 
@@ -158,13 +150,67 @@ def main():
     ui = Ui_MainWindow()
     ui.setupUi(main_window)  # QMainWindow에 UI 설정
 
+    #계좌 항목 출력
+    hold_df = function.hold_account()
+    hold_df['balance'] = hold_df['balance'].astype(float)
+    hold_df['avg_buy_price'] = hold_df['avg_buy_price'].astype(float)
+    hold_df['Total_KRW'] = hold_df['balance']*hold_df['avg_buy_price']
+
+    krw_items = hold_df[(hold_df['Total_KRW'] >= 1000)]
+    cash_item = hold_df[hold_df['currency'] == 'KRW']
+    result_df = pd.concat([cash_item, krw_items])
+
+    hold_model = DataFrameModel(result_df)
+    ui.tableView_7.setModel(hold_model)
+    ui.tableView_7.resizeColumnsToContents()
+    header = ui.tableView_7.horizontalHeader()
+    header.setSectionResizeMode(QHeaderView.Stretch)
+
+    #
+    candle_df = function.candle(1, "KRW-SOL", 5)
+    candle_df['candle_date_time_utc'] = pd.to_datetime(candle_df['candle_date_time_utc'])
+    candle_df['candle_date_time_kst'] = pd.to_datetime(candle_df['candle_date_time_kst'])
+    candle_df.rename(columns={'candle_date_time_utc': 'UTC','candle_date_time_kst': 'KST', 'trade_price' : 'CLOSE', 'opening_price' : 'OPEN', 'high_price' : 'HIGH', 'low_price' : 'LOW'}, inplace=True)
+    print(candle_df.columns)
+    ui.label.setText(candle_df["market"][0])
+
+    candle_df_filterd = candle_df[['UTC', 'KST', 'CLOSE', 'OPEN', 'HIGH', 'LOW']]
+    candle_model = DataFrameModel(candle_df_filterd)
+    ui.tableView_5.setModel(candle_model)
+    ui.tableView_5.resizeColumnsToContents()
+    ui.tableView_5.verticalHeader().setVisible(False)
+    header = ui.tableView_5.horizontalHeader()
+    header.setSectionResizeMode(QHeaderView.Stretch)
+
+    #시간 표시
+    def showTime():
+        # 현재 시각 가져오기
+        time = QDateTime.currentDateTime()
+
+        # 시각을 HH:mm:ss 형식으로 포맷
+        text = time.toString('yyyy-MM-dd HH:mm:ss')
+
+        # QLCDNumber에 시각 표시
+        ui.lcdNumber.display(text)
+
+    timer = QTimer()
+    timer.timeout.connect(showTime)
+    timer.start(1000)  # 1초마다 업데이트
+
+    #버튼 처리
+    def on_pushButton_10_clicked():
+        ui.textBrowser_2.append("TEST COMPLETE")
+
+    ui.pushButton_10.clicked.connect(on_pushButton_10_clicked)
+
+
     # 메인 윈도우 보여주기
     main_window.show()
 
     # 애플리케이션 실행
     sys.exit(app.exec())
 
-    #
+    # function.Market_Data_Specific("KRW-SOL")  # SPECFIC TIKCER INFO
     #function.candle(1,"KRW-BTC",5) #CANDLE
     #function.order_possible("KRW-SOL")
     #function.open_order("KRW-SOL")
