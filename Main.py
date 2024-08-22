@@ -16,8 +16,18 @@
 #out_of_scope : 기능 신청 안함
 #호가표 존재 빢쏌
 
+import function
+
 import pandas as pd
 import numpy as np
+
+import sys
+from PySide6.QtWidgets import QApplication, QMainWindow
+from Main_ui import Ui_Dialog
+
+
+import tkinter as tk
+from tkinter import ttk
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.pipeline import Pipeline
@@ -31,279 +41,134 @@ import requests
 import uuid
 from urllib.parse import urlencode, unquote
 
-Access_Key = ""
-Secret_Key = ""
 
-def file_load() :
-    file_path = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt"
-    data = pd.read_csv(file_path)
-    #
-    Access_Key = data.loc[data['type'] == 'Access_Key', 'value'].values[0]
-    Secret_Key = data.loc[data['type'] == 'Secret_Key', 'value'].values[0]
-    #
-    os.environ['UPBIT_OPEN_API_ACCESS_KEY'] = Access_Key
-    os.environ['UPBIT_OPEN_API_SECRET_KEY'] = Secret_Key
-    os.environ['UPBIT_OPEN_API_SERVER_URL'] = 'https://api.upbit.com'
-    #
-    print(f"Access Key: {Access_Key}")
-    print(f"Secret Key: {Secret_Key}")
+def create_scrollable_frame(container, bg_color):
+    # 캔버스 생성
+    canvas = tk.Canvas(container, bg=bg_color)
+    canvas.grid(row=0, column=0, sticky="nsew")
 
-#파라미터가 있는 경우(query => 파라미터의 자료형 중 배열이 존재하는 경우)
-def Authorization_Parms(parms) :
-    query = {
-        #"key[]": ["value1", "value2", "value3"]  # 파라미터의 자료형 중 배열이 존재하는 경우
-        "key[]": parms # 파라미터의 자료형 중 배열이 존재하는 경우
-    }
+    # 스크롤바 생성
+    scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+    scrollbar.grid(row=0, column=1, sticky="ns")
 
-    m = hashlib.sha512()
-    m.update(urlencode(query).encode())
-    query_hash = m.hexdigest()
+    # 스크롤 가능한 프레임 생성
+    scrollable_frame = tk.Frame(canvas, bg=bg_color)
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: canvas.configure(
+            scrollregion=canvas.bbox("all")
+        )
+    )
 
-    payload = {
-        'access_key': Access_Key,
-        'nonce': str(uuid.uuid4()),
-        'query_hash': query_hash,
-        'query_hash_alg': 'SHA512',
-    }
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
 
-    jwt_token = jwt.encode(payload, Secret_Key)
-    authorization_token = 'Bearer {}'.format(jwt_token)
+    return scrollable_frame
 
-#모든 종목 정보
-def Market_Data() :
-    # API 요청 URL
-    url = "https://api.upbit.com/v1/market/all"
+def window_main() :
+    # 루트 창 생성
+    root = tk.Tk()
+    root.title("Binance_Upbit_TCN_TRANSFORMER")
+    root.geometry("1280x720")
 
-    # GET 요청 보내기
-    response = requests.get(url)
+    # 각 row와 column이 동일한 비율로 확장되도록 설정
+    root.grid_rowconfigure(0, weight=1)
+    root.grid_rowconfigure(1, weight=1)
+    root.grid_columnconfigure(1, weight=1)
 
-    # 응답 상태 코드 확인
-    print(f"Status Code: {response.status_code}")
+    #정보 호출
+    rst_df1 = function.hold_account() #ACOUNT CASH INFO
+    rst_df2 = function.trasaction_history("KRW-SOL") #TRANSACTION INFO
 
-    # 응답 데이터 출력 (JSON 형식으로 파싱)
-    if response.status_code == 200:
-        data = response.json()  # JSON 응답을 Python 객체로 변환
-        df = pd.DataFrame(data)
-        print(df)
-    else:
-        print(f"Failed to retrieve data: {response.status_code}")
+    # 프레임 1
+    frame1 = tk.Frame(root, bg="lightblue")
+    frame1.grid(row=0, column=0, sticky="nsew")
+    label1 = tk.Label(frame1, text="Frame 1", bg="lightblue")
+    label1.pack()
+    tree1 = ttk.Treeview(frame1, columns=list(rst_df1.columns), show="headings")
+    for col in rst_df1.columns:
+        tree1.heading(col, text=col)
+        tree1.column(col, width=100)
+    for _, row in rst_df1.iterrows():
+        tree1.insert("", "end", values=list(row))
+    tree1.pack(expand=True, fill='both')
 
-#특정 종목 마켓 데이터 불러오기
-def Market_Data_Specific(ticker) :
-    # API 요청 URL
-    url = f"https://api.upbit.com/v1/ticker?markets={ticker}"
+    # 프레임 2
+    frame2 = tk.Frame(root, bg="lightgreen")
+    frame2.grid(row=0, column=1, sticky="nsew")
+    label2 = tk.Label(frame2, text="Frame 2", bg="lightgreen")
+    label2.pack()
+    tree2 = ttk.Treeview(frame2, columns=list(rst_df2.columns), show="headings")
+    for col in rst_df2.columns:
+        tree2.heading(col, text=col)
+        tree2.column(col, width=100)
+    for _, row in rst_df2.iterrows():
+        tree2.insert("", "end", values=list(row))
+    tree2.pack(expand=True, fill='both')
 
-    # GET 요청 보내기
-    response = requests.get(url)
+    # 루프 시작
+    root.mainloop()
 
-    # 응답 상태 코드 확인
-    print(f"Status Code: {response.status_code}")
+def window_ticker() :
+    # 루트 창 생성
+    root = tk.Tk()
 
-    # 응답 데이터 출력 (JSON 형식으로 파싱)
-    if response.status_code == 200:
-        data = response.json()  # JSON 응답을 Python 객체로 변환
-        df = pd.DataFrame(data)
-        print(df)
-    else:
-        print(f"Failed to retrieve data: {response.status_code}")
+    # 창의 제목 설정
+    root.title("TICKER LIST")
 
-#분봉 데이터 불러오기
-def candle(type, ticker, count) :
-    # API 요청 URL
-    url = f"https://api.upbit.com/v1/candles/minutes/{type}?market={ticker}&count={count}"
+    #TICKER_TOTAL
+    rst_df = function.Market_Data()  # TOTAL TICKER
 
-    # GET 요청 보내기
-    response = requests.get(url)
+    if rst_df != 0 :
+        # 내부 프레임 생성
+        frame = tk.Frame(root)
+        frame.pack(expand=True, fill='both', padx=10, pady=10)
 
-    # 응답 상태 코드 확인
-    print(f"Status Code: {response.status_code}")
+        # Treeview 위젯 생성 및 프레임에 배치
+        tree = ttk.Treeview(frame)
+        tree.pack(expand=True, fill='both')
 
-    # 응답 데이터 출력 (JSON 형식으로 파싱)
-    if response.status_code == 200:
-        data = response.json()  # JSON 응답을 Python 객체로 변환
-        df = pd.DataFrame(data)
-        print(df)
-    else:
-        print(f"Failed to retrieve data: {response.status_code}")
+        tree["columns"] = list(rst_df.columns)
+        tree["show"] = "headings"
 
-#계좌 보유 현황
-def hold_account() :
-    access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
-    secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
-    server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
+        for col in rst_df.columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=100)
 
-    payload = {
-        'access_key': access_key,
-        'nonce': str(uuid.uuid4()),
-    }
+        # 기존 데이터 삭제
+        for row in tree.get_children():
+            tree.delete(row)
 
-    jwt_token = jwt.encode(payload, secret_key)
-    authorization = 'Bearer {}'.format(jwt_token)
-    headers = {
-        'Authorization': authorization,
-    }
+        # 새로운 데이터 삽입
+        for index, row in rst_df.iterrows():
+            tree.insert("", "end", values=list(row))
 
-    response = requests.get(server_url + '/v1/accounts', headers=headers)
-    data = response.json()
-    df = pd.DataFrame(data)
-    print(df)
-
-def trasaction_history(ticker) :
-    url = f"https://api.upbit.com/v1/trades/ticks?market={ticker}&count=10"
-    headers = {"accept": "application/json"}
-    response = requests.get(url, headers=headers)
-    data = response.json()
-    df = pd.DataFrame(data)
-    print(df)
-
-#주문 가능 정보
-def order_possible(ticker) :
-
-    access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
-    secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
-    server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
-
-    params = {
-        'market': ticker
-    }
-    query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
-
-    m = hashlib.sha512()
-    m.update(query_string)
-    query_hash = m.hexdigest()
-
-    payload = {
-        'access_key': access_key,
-        'nonce': str(uuid.uuid4()),
-        'query_hash': query_hash,
-        'query_hash_alg': 'SHA512',
-    }
-
-    jwt_token = jwt.encode(payload, secret_key)
-    authorization = 'Bearer {}'.format(jwt_token)
-    headers = {
-        'Authorization': authorization,
-    }
-
-    response = requests.get(server_url + '/v1/orders/chance', params=params, headers=headers)
-    data = response.json()
-    df = pd.DataFrame(data)
-    print(df)
-
-def open_order(ticker) :
-    access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
-    secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
-    server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
-
-    params = {
-        'market': ticker,
-        'states[]': ['wait', 'watch']
-    }
-    query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
-
-    m = hashlib.sha512()
-    m.update(query_string)
-    query_hash = m.hexdigest()
-
-    payload = {
-        'access_key': access_key,
-        'nonce': str(uuid.uuid4()),
-        'query_hash': query_hash,
-        'query_hash_alg': 'SHA512',
-    }
-
-    jwt_token = jwt.encode(payload, secret_key)
-    authorization = 'Bearer {}'.format(jwt_token)
-    headers = {
-        'Authorization': authorization,
-    }
-
-    response = requests.get(server_url + '/v1/orders/open', params=params, headers=headers)
-    data = response.json()
-    df = pd.DataFrame(data)
-    print(df)
-
-def closed_order(ticker) :
-    access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
-    secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
-    server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
-
-    params = {
-        'market': ticker,
-        'states[]': ['done', 'cancel'],
-        'start_time': '2024-08-21T21:00:00+09:00',
-    }
-    query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
-
-    m = hashlib.sha512()
-    m.update(query_string)
-    query_hash = m.hexdigest()
-
-    payload = {
-        'access_key': access_key,
-        'nonce': str(uuid.uuid4()),
-        'query_hash': query_hash,
-        'query_hash_alg': 'SHA512',
-    }
-
-    jwt_token = jwt.encode(payload, secret_key)
-    authorization = 'Bearer {}'.format(jwt_token)
-    headers = {
-        'Authorization': authorization,
-    }
-
-    response = requests.get(server_url + '/v1/orders/closed', params=params, headers=headers)
-    data = response.json()
-    df = pd.DataFrame(data)
-    print(df)
-
-def order(ticker, type, ord_type, price, volume) :
-    access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
-    secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
-    server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
-
-    params = {
-        'market': ticker,
-        'side': type,
-        'ord_type': ord_type,
-        'price': price,
-        'volume': volume
-    }
-    query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
-
-    m = hashlib.sha512()
-    m.update(query_string)
-    query_hash = m.hexdigest()
-
-    payload = {
-        'access_key': access_key,
-        'nonce': str(uuid.uuid4()),
-        'query_hash': query_hash,
-        'query_hash_alg': 'SHA512',
-    }
-
-    jwt_token = jwt.encode(payload, secret_key)
-    authorization = 'Bearer {}'.format(jwt_token)
-    headers = {
-        'Authorization': authorization,
-    }
-
-    response = requests.post(server_url + '/v1/orders', json=params, headers=headers)
-    data = response.json()
-    df = pd.DataFrame(data)
-    print(df)
-
+    #TICKER_DETAIL
+    #function.Market_Data_Specific("KRW-SOL")  # SPECFIC TIKCER INFO
 
 def main():
-    file_load() #API KEYS LOAD
-    #Market_Data() #TOTAL TICKER
-    #Market_Data_Specific("KRW-BTC") #SPECFIC TIKCER INFO
-    #candle(1,"KRW-BTC",5) #CANDLE
-    #hold_account() #ACOUNT CASH INFO
-    #trasaction_history("KRW-BTC") #TICKER TRANSACTION INFO
-    #order_possible("KRW-SOL")
-    #open_order("KRW-SOL")
-    #closed_order("KRW-SOL")
+    function.file_load() #API KEYS LOAD
+    #
+    app = QApplication(sys.argv)
+
+    # QMainWindow 인스턴스 생성
+    main_window = QMainWindow()
+
+    # Ui_MainWindow 인스턴스 생성
+    ui = Ui_Dialog()
+    ui.setupUi(main_window)  # QMainWindow에 UI 설정
+
+    # 메인 윈도우 보여주기
+    main_window.show()
+
+    # 애플리케이션 실행
+    sys.exit(app.exec())
+
+    #
+    #function.candle(1,"KRW-BTC",5) #CANDLE
+    #function.order_possible("KRW-SOL")
+    #function.open_order("KRW-SOL")
+    #function.closed_order("KRW-SOL")
 
 if __name__ == "__main__":
     main()
