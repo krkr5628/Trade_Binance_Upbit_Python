@@ -23,7 +23,7 @@ import numpy as np
 
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow
-from Main_ui import Ui_Dialog
+from Main_ui import Ui_MainWindow
 
 
 import tkinter as tk
@@ -155,7 +155,7 @@ def main():
     main_window = QMainWindow()
 
     # Ui_MainWindow 인스턴스 생성
-    ui = Ui_Dialog()
+    ui = Ui_MainWindow()
     ui.setupUi(main_window)  # QMainWindow에 UI 설정
 
     # 메인 윈도우 보여주기
