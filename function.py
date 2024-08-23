@@ -6,6 +6,7 @@ import os
 import requests
 import uuid
 from urllib.parse import urlencode, unquote
+from urllib.parse import quote
 
 def file_load() :
     file_path = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt"
@@ -17,9 +18,6 @@ def file_load() :
     os.environ['UPBIT_OPEN_API_ACCESS_KEY'] = Access_Key
     os.environ['UPBIT_OPEN_API_SECRET_KEY'] = Secret_Key
     os.environ['UPBIT_OPEN_API_SERVER_URL'] = 'https://api.upbit.com'
-    #
-    print(f"Access Key: {Access_Key}")
-    print(f"Secret Key: {Secret_Key}")
 
 def Market_Data() :
     # API 요청 URL
@@ -61,9 +59,16 @@ def Market_Data_Specific(ticker) :
         print(f"Failed to retrieve data: {response.status_code}")
 
 #분봉 데이터 불러오기
-def candle(type, ticker, count) :
+def candle(type, ticker, count, time) :
+
+    url = ""
+
     # API 요청 URL
-    url = f"https://api.upbit.com/v1/candles/minutes/{type}?market={ticker}&count={count}"
+    if time == 0 :
+        url = f"https://api.upbit.com/v1/candles/minutes/{type}?market={ticker}&count={count}"
+    else :
+        encoded_time = quote(time)
+        url = f"https://api.upbit.com/v1/candles/minutes/{type}?market={ticker}&to={encoded_time}&count={count}"
 
     # GET 요청 보내기
     response = requests.get(url)

@@ -21,6 +21,7 @@ import function
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import time
 
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QHeaderView
@@ -166,15 +167,14 @@ def main():
     header = ui.tableView_7.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
-    #
-    candle_df = function.candle(1, "KRW-SOL", 5)
+    #초기 분봉 업데이트
+    candle_df = function.candle(1, "KRW-SOL", 60, 0).iloc[1:]
     candle_df['candle_date_time_utc'] = pd.to_datetime(candle_df['candle_date_time_utc'])
     candle_df['candle_date_time_kst'] = pd.to_datetime(candle_df['candle_date_time_kst'])
     candle_df.rename(columns={'candle_date_time_utc': 'UTC','candle_date_time_kst': 'KST', 'trade_price' : 'CLOSE', 'opening_price' : 'OPEN', 'high_price' : 'HIGH', 'low_price' : 'LOW'}, inplace=True)
-    print(candle_df.columns)
-    ui.label.setText(candle_df["market"][0])
-
+    ui.label.setText(candle_df["market"][1])
     candle_df_filterd = candle_df[['UTC', 'KST', 'CLOSE', 'OPEN', 'HIGH', 'LOW']]
+
     candle_model = DataFrameModel(candle_df_filterd)
     ui.tableView_5.setModel(candle_model)
     ui.tableView_5.resizeColumnsToContents()
@@ -182,20 +182,52 @@ def main():
     header = ui.tableView_5.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
-    #시간 표시
+    def candle_update(time):
+
+        nonlocal candle_df_filterd
+
+        time_8061 = time.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
+        # 1분 봉 최신 업데이트
+        minute_df = function.candle(1, "KRW-SOL", 1, time_8061)
+        minute_df['candle_date_time_utc'] = pd.to_datetime(minute_df['candle_date_time_utc'])
+        minute_df['candle_date_time_kst'] = pd.to_datetime(minute_df['candle_date_time_kst'])
+        minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'CLOSE',
+                                  'opening_price': 'OPEN', 'high_price': 'HIGH', 'low_price': 'LOW'}, inplace=True)
+        minute_df_filterd = minute_df[['UTC', 'KST', 'CLOSE', 'OPEN', 'HIGH', 'LOW']]
+        candle_df_filterd = pd.concat([minute_df_filterd, candle_df_filterd]).reset_index(drop=True)
+
+        if len(candle_df_filterd) > 70:
+            candle_df_filterd = candle_df_filterd.iloc[:-1]
+
+        candle_model = DataFrameModel(candle_df_filterd)
+        ui.tableView_5.setModel(candle_model)
+        ui.tableView_5.resizeColumnsToContents()
+        ui.tableView_5.verticalHeader().setVisible(False)
+        header = ui.tableView_5.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+
+    #시간 표시 및 시간 관련 이벤트 처리
     def showTime():
+
+        nonlocal candle_df_filterd
+
         # 현재 시각 가져오기
         time = QDateTime.currentDateTime()
+        ui.lcdNumber.display(time.toString('yyyy-MM-dd HH:mm:ss'))
 
-        # 시각을 HH:mm:ss 형식으로 포맷
-        text = time.toString('yyyy-MM-dd HH:mm:ss')
+        #00초
+        if time.time().second() == 5 :
+            candle_update(time)
 
-        # QLCDNumber에 시각 표시
-        ui.lcdNumber.display(text)
 
     timer = QTimer()
     timer.timeout.connect(showTime)
-    timer.start(1000)  # 1초마다 업데이트
+    timer.start(1000)  # 60초마다 업데이트
+
+
+    #timer2 = QTimer()
+    #timer2.timeout.connect(candle_update)
+    #timer2.start(60 * 1000)  # 60초마다 업데이트
 
     #버튼 처리
     def on_pushButton_10_clicked():
