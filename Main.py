@@ -28,8 +28,6 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QHeaderView
 from PySide6.QtCore import QAbstractTableModel, Qt, QTimer, QDateTime
 from Main_ui import Ui_MainWindow
 
-
-
 import tkinter as tk
 from tkinter import ttk
 
@@ -46,72 +44,7 @@ import uuid
 from urllib.parse import urlencode, unquote
 
 
-def create_scrollable_frame(container, bg_color):
-    # 캔버스 생성
-    canvas = tk.Canvas(container, bg=bg_color)
-    canvas.grid(row=0, column=0, sticky="nsew")
-
-    # 스크롤바 생성
-    scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
-    scrollbar.grid(row=0, column=1, sticky="ns")
-
-    # 스크롤 가능한 프레임 생성
-    scrollable_frame = tk.Frame(canvas, bg=bg_color)
-    scrollable_frame.bind(
-        "<Configure>",
-        lambda e: canvas.configure(
-            scrollregion=canvas.bbox("all")
-        )
-    )
-
-    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-    canvas.configure(yscrollcommand=scrollbar.set)
-
-    return scrollable_frame
-
-def window_main() :
-    # 루트 창 생성
-    root = tk.Tk()
-    root.title("Binance_Upbit_TCN_TRANSFORMER")
-    root.geometry("1280x720")
-
-    # 각 row와 column이 동일한 비율로 확장되도록 설정
-    root.grid_rowconfigure(0, weight=1)
-    root.grid_rowconfigure(1, weight=1)
-    root.grid_columnconfigure(1, weight=1)
-
-    #정보 호출
-    rst_df1 = function.hold_account() #ACOUNT CASH INFO
-    rst_df2 = function.trasaction_history("KRW-SOL") #TRANSACTION INFO
-
-    # 프레임 1
-    frame1 = tk.Frame(root, bg="lightblue")
-    frame1.grid(row=0, column=0, sticky="nsew")
-    label1 = tk.Label(frame1, text="Frame 1", bg="lightblue")
-    label1.pack()
-    tree1 = ttk.Treeview(frame1, columns=list(rst_df1.columns), show="headings")
-    for col in rst_df1.columns:
-        tree1.heading(col, text=col)
-        tree1.column(col, width=100)
-    for _, row in rst_df1.iterrows():
-        tree1.insert("", "end", values=list(row))
-    tree1.pack(expand=True, fill='both')
-
-    # 프레임 2
-    frame2 = tk.Frame(root, bg="lightgreen")
-    frame2.grid(row=0, column=1, sticky="nsew")
-    label2 = tk.Label(frame2, text="Frame 2", bg="lightgreen")
-    label2.pack()
-    tree2 = ttk.Treeview(frame2, columns=list(rst_df2.columns), show="headings")
-    for col in rst_df2.columns:
-        tree2.heading(col, text=col)
-        tree2.column(col, width=100)
-    for _, row in rst_df2.iterrows():
-        tree2.insert("", "end", values=list(row))
-    tree2.pack(expand=True, fill='both')
-
-    # 루프 시작
-    root.mainloop()
+ticker = "KRW-XRP"
 
 class DataFrameModel(QAbstractTableModel):
     def __init__(self, df=pd.DataFrame(), parent=None):
@@ -141,17 +74,32 @@ class DataFrameModel(QAbstractTableModel):
 def main():
     function.file_load() #API KEYS LOAD
 
-    #
+    #초기 윈도우 생성
     app = QApplication(sys.argv)
-
-    # QMainWindow 인스턴스 생성
     main_window = QMainWindow()
 
     # Ui_MainWindow 인스턴스 생성
     ui = Ui_MainWindow()
     ui.setupUi(main_window)  # QMainWindow에 UI 설정
 
-    #계좌 항목 출력
+    # 시간 표시 및 시간 관련 이벤트 처리
+    def showTime():
+
+        nonlocal candle_df_filterd
+
+        # 현재 시각 가져오기
+        time = QDateTime.currentDateTime()
+        ui.lcdNumber.display(time.toString('yyyy-MM-dd HH:mm:ss'))
+
+        # 00초
+        if time.time().second() == 5:
+            candle_update(time)
+
+    timer = QTimer()
+    timer.timeout.connect(showTime)
+    timer.start(1000)  # 60초마다 업데이트
+
+    #계좌 항목
     hold_df = function.hold_account()
     hold_df['balance'] = hold_df['balance'].astype(float)
     hold_df['avg_buy_price'] = hold_df['avg_buy_price'].astype(float)
@@ -164,11 +112,36 @@ def main():
     hold_model = DataFrameModel(result_df)
     ui.tableView_7.setModel(hold_model)
     ui.tableView_7.resizeColumnsToContents()
+    ui.tableView_7.verticalHeader().setVisible(False)
     header = ui.tableView_7.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
+    #주문 대기 및 예약 항목
+    order_wait_data = function.order_wait(ticker)
+    if not order_wait_data.empty :
+        order_wait_data_filtered = order_wait_data[['side', 'ord_type', 'price', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']]
+        order_wait_model = DataFrameModel(order_wait_data_filtered)
+        ui.tableView_3.setModel(order_wait_model)
+        ui.tableView_3.resizeColumnsToContents()
+        ui.tableView_3.verticalHeader().setVisible(False)
+        header = ui.tableView_3.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+
+    #주문 완료 및 취소 항목(1시간 이내)
+    time_close = QDateTime.currentDateTime()
+    time_8061_close = time_close.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
+    order_close_data = function.order_close(ticker, time_8061_close)
+    if not order_close_data.empty:
+        order_close_data_filtered = order_close_data[['side', 'ord_type', 'price', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']]
+        order_close_model = DataFrameModel(order_close_data_filtered)
+        ui.tableView_4.setModel(order_close_model)
+        ui.tableView_4.resizeColumnsToContents()
+        ui.tableView_4.verticalHeader().setVisible(False)
+        header = ui.tableView_4.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+
     #초기 분봉 업데이트
-    candle_df = function.candle(1, "KRW-SOL", 60, 0).iloc[1:]
+    candle_df = function.candle(1, ticker, 60, 0).iloc[1:]
     candle_df['candle_date_time_utc'] = pd.to_datetime(candle_df['candle_date_time_utc'])
     candle_df['candle_date_time_kst'] = pd.to_datetime(candle_df['candle_date_time_kst'])
     candle_df.rename(columns={'candle_date_time_utc': 'UTC','candle_date_time_kst': 'KST', 'trade_price' : 'CLOSE', 'opening_price' : 'OPEN', 'high_price' : 'HIGH', 'low_price' : 'LOW'}, inplace=True)
@@ -182,13 +155,14 @@ def main():
     header = ui.tableView_5.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
+    # 분봉 업데이트(1분 주기)
     def candle_update(time):
 
         nonlocal candle_df_filterd
 
         time_8061 = time.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
         # 1분 봉 최신 업데이트
-        minute_df = function.candle(1, "KRW-SOL", 1, time_8061)
+        minute_df = function.candle(1, ticker, 1, time_8061)
         minute_df['candle_date_time_utc'] = pd.to_datetime(minute_df['candle_date_time_utc'])
         minute_df['candle_date_time_kst'] = pd.to_datetime(minute_df['candle_date_time_kst'])
         minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'CLOSE',
@@ -206,29 +180,6 @@ def main():
         header = ui.tableView_5.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
-    #시간 표시 및 시간 관련 이벤트 처리
-    def showTime():
-
-        nonlocal candle_df_filterd
-
-        # 현재 시각 가져오기
-        time = QDateTime.currentDateTime()
-        ui.lcdNumber.display(time.toString('yyyy-MM-dd HH:mm:ss'))
-
-        #00초
-        if time.time().second() == 5 :
-            candle_update(time)
-
-
-    timer = QTimer()
-    timer.timeout.connect(showTime)
-    timer.start(1000)  # 60초마다 업데이트
-
-
-    #timer2 = QTimer()
-    #timer2.timeout.connect(candle_update)
-    #timer2.start(60 * 1000)  # 60초마다 업데이트
-
     #버튼 처리
     def on_pushButton_10_clicked():
         ui.textBrowser_2.append("TEST COMPLETE")
@@ -236,17 +187,9 @@ def main():
     ui.pushButton_10.clicked.connect(on_pushButton_10_clicked)
 
 
-    # 메인 윈도우 보여주기
+    # 메인 윈도우 보여주기 및 애플리케이션 실행
     main_window.show()
-
-    # 애플리케이션 실행
     sys.exit(app.exec())
-
-    # function.Market_Data_Specific("KRW-SOL")  # SPECFIC TIKCER INFO
-    #function.candle(1,"KRW-BTC",5) #CANDLE
-    #function.order_possible("KRW-SOL")
-    #function.open_order("KRW-SOL")
-    #function.closed_order("KRW-SOL")
 
 if __name__ == "__main__":
     main()

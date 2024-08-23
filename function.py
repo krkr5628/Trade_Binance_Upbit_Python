@@ -99,14 +99,6 @@ def hold_account() :
     df = pd.DataFrame(data)
     return df
 
-def trasaction_history(ticker) :
-    url = f"https://api.upbit.com/v1/trades/ticks?market={ticker}&count=50"
-    headers = {"accept": "application/json"}
-    response = requests.get(url, headers=headers)
-    data = response.json()
-    df = pd.DataFrame(data)
-    return df
-
 #주문 가능 정보
 def order_possible(ticker) :
 
@@ -173,3 +165,70 @@ def open_order(ticker) :
     data = response.json()
     df = pd.DataFrame(data)
     print(df)
+
+def order_wait(ticker) :
+    access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
+    secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
+    server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
+
+    params = {
+        'market': ticker,
+        'states[]': ['wait', 'watch']
+    }
+    query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
+
+    m = hashlib.sha512()
+    m.update(query_string)
+    query_hash = m.hexdigest()
+
+    payload = {
+        'access_key': access_key,
+        'nonce': str(uuid.uuid4()),
+        'query_hash': query_hash,
+        'query_hash_alg': 'SHA512',
+    }
+
+    jwt_token = jwt.encode(payload, secret_key)
+    authorization = 'Bearer {}'.format(jwt_token)
+    headers = {
+        'Authorization': authorization,
+    }
+
+    response = requests.get(server_url + '/v1/orders/open', params=params, headers=headers)
+    data = response.json()
+    df = pd.DataFrame(data)
+    return df
+
+def order_close(ticker, time) :
+    access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
+    secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
+    server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
+
+    params = {
+        'market': ticker,
+        'states[]': ['done', 'cancel'],
+        'end_time': time,
+    }
+    query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
+
+    m = hashlib.sha512()
+    m.update(query_string)
+    query_hash = m.hexdigest()
+
+    payload = {
+        'access_key': access_key,
+        'nonce': str(uuid.uuid4()),
+        'query_hash': query_hash,
+        'query_hash_alg': 'SHA512',
+    }
+
+    jwt_token = jwt.encode(payload, secret_key)
+    authorization = 'Bearer {}'.format(jwt_token)
+    headers = {
+        'Authorization': authorization,
+    }
+
+    response = requests.get(server_url + '/v1/orders/closed', params=params, headers=headers)
+    data = response.json()
+    df = pd.DataFrame(data)
+    return df
