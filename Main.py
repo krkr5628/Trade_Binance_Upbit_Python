@@ -17,16 +17,20 @@
 #호가표 존재 빢쏌
 
 import function
+import function_real
 
 import pandas as pd
 import numpy as np
 from datetime import datetime
 import time
+import asyncio
 
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QHeaderView
 from PySide6.QtCore import QAbstractTableModel, Qt, QTimer, QDateTime
 from Main_ui import Ui_MainWindow
+from qasync import QEventLoop
+from PyQt6.QtGui import QTextCursor, QTextBlockFormat
 
 import tkinter as tk
 from tkinter import ttk
@@ -42,7 +46,6 @@ import os
 import requests
 import uuid
 from urllib.parse import urlencode, unquote
-
 
 ticker = "KRW-XRP"
 
@@ -117,7 +120,7 @@ def main():
     header.setSectionResizeMode(QHeaderView.Stretch)
 
     #주문 대기 및 예약 항목
-    order_wait_data = function.order_wait(ticker)
+    order_wait_data = function.order_wait_history(ticker)
     if not order_wait_data.empty :
         order_wait_data_filtered = order_wait_data[['side', 'ord_type', 'price', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']]
         order_wait_model = DataFrameModel(order_wait_data_filtered)
@@ -130,7 +133,7 @@ def main():
     #주문 완료 및 취소 항목(1시간 이내)
     time_close = QDateTime.currentDateTime()
     time_8061_close = time_close.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
-    order_close_data = function.order_close(ticker, time_8061_close)
+    order_close_data = function.order_close_history(ticker, time_8061_close)
     if not order_close_data.empty:
         order_close_data_filtered = order_close_data[['side', 'ord_type', 'price', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']]
         order_close_model = DataFrameModel(order_close_data_filtered)
@@ -186,10 +189,16 @@ def main():
 
     ui.pushButton_10.clicked.connect(on_pushButton_10_clicked)
 
-
     # 메인 윈도우 보여주기 및 애플리케이션 실행
     main_window.show()
-    sys.exit(app.exec())
+
+    # WebSocket 비동기 처리
+    loop = QEventLoop(app)
+    loop.create_task(function_real.web_socket_initial(ui))
+    loop.run_forever()
+
+    #
+    #function_real.web_scoket_initial()
 
 if __name__ == "__main__":
     main()
