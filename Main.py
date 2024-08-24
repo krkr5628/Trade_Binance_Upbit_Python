@@ -30,7 +30,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QHeaderView
 from PySide6.QtCore import QAbstractTableModel, Qt, QTimer, QDateTime
 from Main_ui import Ui_MainWindow
 from qasync import QEventLoop
-from PyQt6.QtGui import QTextCursor, QTextBlockFormat
+from PySide6.QtGui import QStandardItemModel, QStandardItem
 
 import tkinter as tk
 from tkinter import ttk
@@ -112,7 +112,28 @@ def main():
     cash_item = hold_df[hold_df['currency'] == 'KRW']
     result_df = pd.concat([cash_item, krw_items])
 
-    hold_model = DataFrameModel(result_df)
+    # 체크박스 열 추가
+    result_df['Select'] = False
+
+    #hold_model = DataFrameModel(result_df)
+
+    hold_model = QStandardItemModel()
+    hold_model.setColumnCount(len(result_df.columns))
+    hold_model.setHorizontalHeaderLabels(result_df.columns)
+
+    for row in range(len(result_df)):
+        items = []
+        for col in range(len(result_df.columns)):
+            value = result_df.iloc[row, col]
+            if col == result_df.columns.get_loc('Select'):  # Select 열에 체크박스 추가
+                item = QStandardItem()
+                item.setCheckable(True)
+                item.setCheckState(Qt.Checked if value else Qt.Unchecked)
+            else:
+                item = QStandardItem(str(value))
+            items.append(item)
+        hold_model.appendRow(items)
+
     ui.tableView_7.setModel(hold_model)
     ui.tableView_7.resizeColumnsToContents()
     ui.tableView_7.verticalHeader().setVisible(False)
@@ -122,8 +143,30 @@ def main():
     #주문 대기 및 예약 항목
     order_wait_data = function.order_wait_history(ticker)
     if not order_wait_data.empty :
-        order_wait_data_filtered = order_wait_data[['side', 'ord_type', 'price', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']]
-        order_wait_model = DataFrameModel(order_wait_data_filtered)
+        order_wait_data_filtered = order_wait_data[['side', 'ord_type', 'price', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']].copy()
+
+        #order_wait_model = DataFrameModel(order_wait_data_filtered)
+
+        # 체크박스 열 추가
+        order_wait_data_filtered.loc[:, 'Select'] = False
+
+        order_wait_model = QStandardItemModel()
+        order_wait_model.setColumnCount(len(order_wait_data_filtered.columns))
+        order_wait_model.setHorizontalHeaderLabels(order_wait_data_filtered.columns)
+
+        for row in range(len(order_wait_data_filtered)):
+            items = []
+            for col in range(len(order_wait_data_filtered.columns)):
+                value = order_wait_data_filtered.iloc[row, col]
+                if col == order_wait_data_filtered.columns.get_loc('Select'):  # Select 열에 체크박스 추가
+                    item = QStandardItem()
+                    item.setCheckable(True)
+                    item.setCheckState(Qt.Checked if value else Qt.Unchecked)
+                else:
+                    item = QStandardItem(str(value))
+                items.append(item)
+            order_wait_model.appendRow(items)
+
         ui.tableView_3.setModel(order_wait_model)
         ui.tableView_3.resizeColumnsToContents()
         ui.tableView_3.verticalHeader().setVisible(False)
