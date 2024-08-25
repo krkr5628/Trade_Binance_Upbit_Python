@@ -75,6 +75,19 @@ def Account(ui) :
     header = ui.tableView_7.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
+    def cancel_selected_orders():
+        ui.textBrowser_2.append("TEST1")
+        for row in range(hold_model.rowCount()):
+            item = hold_model.item(row, result_df.columns.get_loc('Select'))
+            if item.checkState() == Qt.Checked:
+                uuid = hold_model.item(row, result_df.columns.get_loc('unit_currency')).text() + '-' + hold_model.item(row, result_df.columns.get_loc('currency')).text()
+                volume = hold_model.item(row, result_df.columns.get_loc('balance')).text()
+
+                #open_order(ticker, type, ord_type, volume, price)
+                function.cancel_order(uuid, 'ask', 'market', volume, '')
+
+    ui.pushButton_10.clicked.connect(cancel_selected_orders)
+
 def Order_Wait(ui, ticker) :
     # 주문 대기 및 예약 항목
     order_wait_data = function.order_wait_history(ticker)
@@ -111,16 +124,16 @@ def Order_Wait(ui, ticker) :
         header = ui.tableView_3.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
-        # Cancel 버튼 이벤트 연결
-        def cancel_selected_orders():
-            ui.textBrowser_2.append("TEST COMPLETE")
+        # 청산 버튼 이벤트 연결
+        def Clear_selected_orders():
+            ui.textBrowser_2.append("TEST1")
             for row in range(order_wait_model.rowCount()):
                 item = order_wait_model.item(row, order_wait_data_filtered.columns.get_loc('Select'))
                 if item.checkState() == Qt.Checked:
-                    uuid = order_wait_model.item(row, order_wait_data_filtered.columns.get_loc('uuid')).text()
-                    function.cancel_order(uuid)
+                    ticker = order_wait_model.item(row, order_wait_data_filtered.columns.get_loc('uuid')).text()
+                    function.open_order(ticker)
 
-        ui.pushButton_10.clicked.connect(cancel_selected_orders)
+        ui.pushButton_6.clicked.connect(Clear_selected_orders)
 
 def Order_Complete(ui, ticker) :
     # 주문 완료 및 취소 항목(1시간 이내)

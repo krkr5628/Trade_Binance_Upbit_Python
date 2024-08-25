@@ -132,14 +132,17 @@ def order_possible(ticker) :
     df = pd.DataFrame(data)
     print(df)
 
-def open_order(ticker) :
+def open_order(ticker, type, ord_type, volume, price) :
     access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
     secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
 
     params = {
         'market': ticker,
-        'states[]': ['wait', 'watch']
+        'side': type,
+        'ord_type': ord_type,
+        'price': price,
+        'volume': volume
     }
     query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
 
@@ -160,7 +163,7 @@ def open_order(ticker) :
         'Authorization': authorization,
     }
 
-    response = requests.get(server_url + '/v1/orders/open', params=params, headers=headers)
+    response = requests.post(server_url + '/v1/orders', json=params, headers=headers)
     data = response.json()
     df = pd.DataFrame(data)
     print(df)
