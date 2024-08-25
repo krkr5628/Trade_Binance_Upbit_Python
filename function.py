@@ -4,6 +4,7 @@ import hashlib
 import os
 import requests
 import uuid
+import json
 from urllib.parse import urlencode, unquote
 from urllib.parse import quote
 
@@ -146,6 +147,8 @@ def open_order(ticker, type, ord_type, volume, price, ui) :
     secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
 
+    volume
+
     params = {
         'market': ticker,
         'side': type,
@@ -154,20 +157,22 @@ def open_order(ticker, type, ord_type, volume, price, ui) :
         'volume': volume
     }
 
-    if type == 'ask' and ord_type == 'market' :
-        params = {
-            'market': ticker,
-            'side': type,
-            'ord_type': ord_type,
-            'volume': volume
-        }
-
+    #시장가 매수
     if type == 'bid' and ord_type == 'price':
         params = {
             'market': ticker,
             'side': type,
             'ord_type': ord_type,
             'price': price,
+        }
+
+    #시장가 매도
+    if type == 'ask' and ord_type == 'market' :
+        params = {
+            'market': ticker,
+            'side': type,
+            'ord_type': ord_type,
+            'volume': volume
         }
 
     query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
@@ -192,7 +197,7 @@ def open_order(ticker, type, ord_type, volume, price, ui) :
     response = requests.post(server_url + '/v1/orders', json=params, headers=headers)
     data = response.json()
     ui.textBrowser_2.append('-----ORDER-----')
-    ui.textBrowser_2.append(data)
+    ui.textBrowser_2.append(json.dumps(data, indent=4))
     ui.textBrowser_2.append('-----ORDER-----')
 
 def close_order(uuid_tmp) :

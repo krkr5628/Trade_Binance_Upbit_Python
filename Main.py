@@ -92,7 +92,7 @@ def main():
     function_complex.setting_initial(ui)
 
     #계좌 + 청산 업데이트
-    function_complex.Account(ui)
+    function_complex.Account(ui, ticker)
 
     # 주문 완료 및 취소 항목(1시간 이내)
     function_complex.Order_Complete(ui, ticker)
@@ -120,10 +120,35 @@ def main():
 
     # Refresh 버튼 처리
     def refresh():
-        function_complex.Account(ui)
+        function_complex.Account(ui, ticker)
         function_complex.Order_Wait(ui, ticker)
-
     ui.pushButton_8.clicked.connect(refresh)
+
+    #매수 주문
+    def order() :
+
+        #시장가 => 매수할 총 금액 입력, 지정가 => 호가 입력
+        price_volume_order = ui.textEdit_2.toPlainText()
+
+        #입력값이 없으면 경고
+        if not price_volume_order.strip():  # strip()으로 공백만 있는 경우도 체크
+            ui.textBrowser_2.append("[경고] 매수 금액 입력")
+            return
+
+        #매수 매도 5천원 넘지 않으면 경고
+
+        #주문 타입 확인
+        ord_type = 'limit'
+        ord_type_hoga = ui.comboBox.currentText()
+        if ord_type_hoga == 'Market' :
+            ord_type_hoga = 0
+            ord_type = 'price'
+
+        #호가 계산
+
+        #open_order(ticker, type, ord_type, volume, price, ui)
+        function.open_order(ticker, 'bid', ord_type, ord_type_hoga, price_volume_order, ui)
+    ui.pushButton_11.clicked.connect(order)
 
     # 메인 윈도우 보여주기 및 애플리케이션 실행
     main_window.show()

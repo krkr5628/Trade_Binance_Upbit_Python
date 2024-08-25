@@ -3,6 +3,7 @@ import uuid
 import websockets   # websocket-client
 import os
 import json
+import function_complex
 
 async def web_socket_initial(ui):
     async def on_message(ws):
@@ -14,8 +15,14 @@ async def web_socket_initial(ui):
             json_data = json.loads(data)
             # trade_price 값 추출
             trade_price = json_data.get("trade_price", "No trade_price found")
+            #글로벌 변수
+            avg_price = function_complex.avg_price
+            #상승 하락 차이
+            price_difference_percentage = 0
+            if not avg_price == 0 :
+                price_difference_percentage = round((float(trade_price) - float(avg_price)) / float(avg_price) * 100, 3)
             # UI 업데이트 - 받은 메시지를 textBrowser_4에 출력
-            ui.textBrowser_4.setText(str(trade_price))
+            ui.textBrowser_4.setText(f"{str(trade_price)} / {avg_price} / {price_difference_percentage}%")
 
     async def on_connect(ws):
         # WebSocket 서버에 성공적으로 연결되었을 때 호출

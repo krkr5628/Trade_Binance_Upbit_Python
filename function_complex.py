@@ -43,10 +43,20 @@ def setting_initial(ui) :
     market_index = initial_values.index("Market")  # "Market"의 인덱스 찾기
     ui.comboBox.setCurrentIndex(market_index)
 
-def Account(ui) :
+avg_price = 0
+
+def Account(ui, ticker) :
     # 계좌 항목
     hold_df = function.hold_account()
     if not hold_df.empty :
+        # 퍼센트 파악 전용 글로벌 시세
+        global avg_price
+        ticker_currency = ticker.split('-')[1]
+        avg_price_filter = hold_df[hold_df['currency'] == ticker_currency]
+        if not avg_price_filter.empty :
+            avg_price = avg_price_filter['avg_buy_price'].values[0]
+
+        #
         hold_df['balance'] = hold_df['balance'].astype(float)
         hold_df['avg_buy_price'] = hold_df['avg_buy_price'].astype(float)
         hold_df['Total_KRW'] = hold_df['balance'] * hold_df['avg_buy_price']
@@ -198,7 +208,7 @@ def Order_Complete(ui, ticker) :
     order_close_data = function.order_close_history(ticker, time_8061_close)
     if not order_close_data.empty:
         order_close_data_filtered = order_close_data[
-            ['side', 'ord_type', 'price', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']]
+            ['market', 'side', 'ord_type', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']]
         order_close_model = DataFrameModel(order_close_data_filtered)
         ui.tableView_4.setModel(order_close_model)
         ui.tableView_4.resizeColumnsToContents()
