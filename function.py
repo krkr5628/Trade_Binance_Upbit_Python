@@ -18,6 +18,15 @@ def file_load() :
     os.environ['UPBIT_OPEN_API_SECRET_KEY'] = Secret_Key
     os.environ['UPBIT_OPEN_API_SERVER_URL'] = 'https://api.upbit.com'
 
+def hoga(ticker) :
+    url = f"https://api.upbit.com/v1/orderbook?markets={ticker}&level=0"
+
+    headers = {"accept": "application/json"}
+
+    response = requests.get(url, headers=headers)
+
+    print(response.text)
+
 def Market_Data() :
     # API 요청 URL
     url = "https://api.upbit.com/v1/market/all"
@@ -132,7 +141,7 @@ def order_possible(ticker) :
     df = pd.DataFrame(data)
     print(df)
 
-def open_order(ticker, type, ord_type, volume, price) :
+def open_order(ticker, type, ord_type, volume, price, ui) :
     access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
     secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
@@ -144,6 +153,23 @@ def open_order(ticker, type, ord_type, volume, price) :
         'price': price,
         'volume': volume
     }
+
+    if type == 'ask' and ord_type == 'market' :
+        params = {
+            'market': ticker,
+            'side': type,
+            'ord_type': ord_type,
+            'volume': volume
+        }
+
+    if type == 'bid' and ord_type == 'price':
+        params = {
+            'market': ticker,
+            'side': type,
+            'ord_type': ord_type,
+            'price': price,
+        }
+
     query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
 
     m = hashlib.sha512()
@@ -165,10 +191,9 @@ def open_order(ticker, type, ord_type, volume, price) :
 
     response = requests.post(server_url + '/v1/orders', json=params, headers=headers)
     data = response.json()
-    df = pd.DataFrame(data)
-    print('-----ORDER--------------')
-    print(df)
-    print('-----ORDER--------------')
+    ui.textBrowser_2.append('-----ORDER-----')
+    ui.textBrowser_2.append(data)
+    ui.textBrowser_2.append('-----ORDER-----')
 
 def close_order(uuid_tmp) :
     access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']

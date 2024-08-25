@@ -16,10 +16,10 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QGroupBox, QHeaderView, QLCDNumber,
-    QLabel, QMainWindow, QMenu, QMenuBar,
-    QPushButton, QSizePolicy, QStatusBar, QTableView,
-    QTextBrowser, QTextEdit, QWidget)
+from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox, QHeaderView,
+    QLCDNumber, QLabel, QMainWindow, QMenu,
+    QMenuBar, QPushButton, QSizePolicy, QStatusBar,
+    QTableView, QTextBrowser, QTextEdit, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -158,12 +158,12 @@ class Ui_MainWindow(object):
         self.pushButton_11 = QPushButton(self.groupBox_11)
         self.pushButton_11.setObjectName(u"pushButton_11")
         self.pushButton_11.setGeometry(QRect(10, 40, 81, 31))
-        self.textEdit = QTextEdit(self.groupBox_11)
-        self.textEdit.setObjectName(u"textEdit")
-        self.textEdit.setGeometry(QRect(90, 40, 81, 31))
         self.textEdit_2 = QTextEdit(self.groupBox_11)
         self.textEdit_2.setObjectName(u"textEdit_2")
-        self.textEdit_2.setGeometry(QRect(170, 40, 81, 31))
+        self.textEdit_2.setGeometry(QRect(180, 40, 71, 31))
+        self.comboBox = QComboBox(self.groupBox_11)
+        self.comboBox.setObjectName(u"comboBox")
+        self.comboBox.setGeometry(QRect(88, 40, 91, 31))
         self.groupBox_12 = QGroupBox(self.centralwidget)
         self.groupBox_12.setObjectName(u"groupBox_12")
         self.groupBox_12.setGeometry(QRect(10, 10, 1271, 111))

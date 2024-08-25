@@ -35,58 +35,94 @@ class DataFrameModel(QAbstractTableModel):
                 return self._df.index[section]
         return None
 
+def setting_initial(ui) :
+    initial_values = ["Ask5", "Ask4", "Ask3", "Ask2", "Ask1", "Market", "Bid1", "Bid2", "Bid3", "Bid4", "Bid5"]
+    ui.comboBox.addItems(initial_values)
+
+    # "Market" 항목을 기본 선택으로 설정
+    market_index = initial_values.index("Market")  # "Market"의 인덱스 찾기
+    ui.comboBox.setCurrentIndex(market_index)
 
 def Account(ui) :
     # 계좌 항목
     hold_df = function.hold_account()
-    hold_df['balance'] = hold_df['balance'].astype(float)
-    hold_df['avg_buy_price'] = hold_df['avg_buy_price'].astype(float)
-    hold_df['Total_KRW'] = hold_df['balance'] * hold_df['avg_buy_price']
+    if not hold_df.empty :
+        hold_df['balance'] = hold_df['balance'].astype(float)
+        hold_df['avg_buy_price'] = hold_df['avg_buy_price'].astype(float)
+        hold_df['Total_KRW'] = hold_df['balance'] * hold_df['avg_buy_price']
 
-    krw_items = hold_df[(hold_df['Total_KRW'] >= 1000)]
-    cash_item = hold_df[hold_df['currency'] == 'KRW']
-    result_df = pd.concat([cash_item, krw_items])
+        krw_items = hold_df[(hold_df['Total_KRW'] >= 1000)]
+        cash_item = hold_df[hold_df['currency'] == 'KRW']
+        result_df = pd.concat([cash_item, krw_items])
 
-    # 체크박스 열 추가
-    result_df['Select'] = False
+        # 체크박스 열 추가
+        result_df['Select'] = False
 
-    # hold_model = DataFrameModel(result_df)
+        # hold_model = DataFrameModel(result_df)
 
-    hold_model = QStandardItemModel()
-    hold_model.setColumnCount(len(result_df.columns))
-    hold_model.setHorizontalHeaderLabels(result_df.columns)
+        hold_model = QStandardItemModel()
+        hold_model.setColumnCount(len(result_df.columns))
+        hold_model.setHorizontalHeaderLabels(result_df.columns)
 
-    for row in range(len(result_df)):
-        items = []
-        for col in range(len(result_df.columns)):
-            value = result_df.iloc[row, col]
-            if col == result_df.columns.get_loc('Select'):  # Select 열에 체크박스 추가
-                item = QStandardItem()
-                item.setCheckable(True)
-                item.setCheckState(Qt.Checked if value else Qt.Unchecked)
-            else:
-                item = QStandardItem(str(value))
-            items.append(item)
-        hold_model.appendRow(items)
+        for row in range(len(result_df)):
+            items = []
+            for col in range(len(result_df.columns)):
+                value = result_df.iloc[row, col]
+                if col == result_df.columns.get_loc('Select'):  # Select 열에 체크박스 추가
+                    item = QStandardItem()
+                    item.setCheckable(True)
+                    item.setCheckState(Qt.Checked if value else Qt.Unchecked)
+                    item.setData(row, Qt.UserRole)  # row 정보를 저장
 
-    ui.tableView_7.setModel(hold_model)
-    ui.tableView_7.resizeColumnsToContents()
-    ui.tableView_7.verticalHeader().setVisible(False)
-    header = ui.tableView_7.horizontalHeader()
-    header.setSectionResizeMode(QHeaderView.Stretch)
+                    # itemChanged 이벤트를 통해 체크박스 상태 변경 시 데이터 모델에 반영
+                    item.setData(False, Qt.UserRole + 1)
+                else:
+                    item = QStandardItem(str(value))
+                items.append(item)
+            hold_model.appendRow(items)
 
-    def clear_selected_orders():
-        ui.textBrowser_2.append("TEST1")
-        for row in range(hold_model.rowCount()):
-            item = hold_model.item(row, result_df.columns.get_loc('Select'))
-            if item.checkState() == Qt.Checked:
-                uuid = hold_model.item(row, result_df.columns.get_loc('unit_currency')).text() + '-' + hold_model.item(row, result_df.columns.get_loc('currency')).text()
-                volume = hold_model.item(row, result_df.columns.get_loc('balance')).text()
+        ui.tableView_7.setModel(hold_model)
+        ui.tableView_7.resizeColumnsToContents()
+        ui.tableView_7.verticalHeader().setVisible(False)
+        header = ui.tableView_7.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
 
-                #open_order(ticker, type, ord_type, volume, price)
-                function.open_order(uuid, 'ask', 'market', volume, '0')
+        def on_item_changed(item):
+            if item.isCheckable():
+                row = item.data(Qt.UserRole)
+                col = result_df.columns.get_loc('Select')
+                result_df.iloc[row, col] = (item.checkState() == Qt.Checked)
 
-    ui.pushButton_6.clicked.connect(clear_selected_orders)
+        # itemChanged 시그널 연결
+        hold_model.itemChanged.connect(on_item_changed)
+
+        # 청산 버튼 이벤트 연결
+        def clear_selected_orders():
+            # 열의 인덱스를 미리 가져옵니다.
+            select_col = result_df.columns.get_loc('Select')
+            unit_currency_col = result_df.columns.get_loc('unit_currency')
+            currency_col = result_df.columns.get_loc('currency')
+            volume_col = result_df.columns.get_loc('balance')
+            volume_locked_col = result_df.columns.get_loc('locked')
+
+            for row in range(hold_model.rowCount()):
+                # 'currency' 열의 항목을 가져옴
+                if hold_model.item(row, currency_col).text() == 'KRW':
+                    continue
+
+                ticker = hold_model.item(row, unit_currency_col).text() + '-' + hold_model.item(row, currency_col).text()
+                volume_order = str(float(hold_model.item(row, volume_col).text()) - float(hold_model.item(row, volume_locked_col).text()))
+
+                # 작업 내용을 UI에 출력
+                ui.textBrowser_2.append(f"Clear order: {ticker} / market / {volume_order}")
+                # 지정된 매개변수로 function.open_order 호출
+                function.open_order(ticker, 'ask', 'market', volume_order, 'null', ui)
+
+        ui.pushButton_6.clicked.connect(clear_selected_orders)
+
+    else :
+        empty_model = QStandardItemModel()  # 또는 hold_model = QStandardItemModel()
+        ui.tableView_7.setModel(empty_model)  # 빈 모델로 설정하여 기존 내용을 제거
 
 def Order_Wait(ui, ticker) :
     # 주문 대기 및 예약 항목
@@ -144,7 +180,6 @@ def Order_Wait(ui, ticker) :
             uuid_col = order_wait_data_filtered.columns.get_loc('uuid')
 
             for row in range(order_wait_model.rowCount()):
-                ui.textBrowser_2.append("TEST2")
                 item = order_wait_model.item(row, select_col)  # 'Select' 열의 항목을 가져옴
                 if item is not None and item.checkState() == Qt.Checked:
                     uuid = order_wait_model.item(row, uuid_col).text()  # 'uuid' 열의 텍스트를 가져옴
@@ -152,6 +187,9 @@ def Order_Wait(ui, ticker) :
                     function.close_order(uuid)
 
         ui.pushButton_10.clicked.connect(cancel_selected_orders)
+    else :
+        empty_model = QStandardItemModel()  # 또는 hold_model = QStandardItemModel()
+        ui.tableView_3.setModel(empty_model)  # 빈 모델로 설정하여 기존 내용을 제거
 
 def Order_Complete(ui, ticker) :
     # 주문 완료 및 취소 항목(1시간 이내)
@@ -168,7 +206,12 @@ def Order_Complete(ui, ticker) :
         header = ui.tableView_4.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
+candle_df_filterd = pd.DataFrame()
+
 def Candle_initial(ui, ticker) :
+
+    global candle_df_filterd
+
     # 초기 분봉 업데이트
     candle_df = function.candle(1, ticker, 60, 0).iloc[1:]
     candle_df['candle_date_time_utc'] = pd.to_datetime(candle_df['candle_date_time_utc'])
@@ -185,4 +228,26 @@ def Candle_initial(ui, ticker) :
     header = ui.tableView_5.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
-    return candle_df_filterd
+def candle_update(time, ticker, ui):
+
+    global candle_df_filterd
+
+    time_8061 = time.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
+    # 1분 봉 최신 업데이트
+    minute_df = function.candle(1, ticker, 1, time_8061)
+    minute_df['candle_date_time_utc'] = pd.to_datetime(minute_df['candle_date_time_utc'])
+    minute_df['candle_date_time_kst'] = pd.to_datetime(minute_df['candle_date_time_kst'])
+    minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'CLOSE',
+                                'opening_price': 'OPEN', 'high_price': 'HIGH', 'low_price': 'LOW'}, inplace=True)
+    minute_df_filterd = minute_df[['UTC', 'KST', 'CLOSE', 'OPEN', 'HIGH', 'LOW']]
+    candle_df_filterd = pd.concat([minute_df_filterd, candle_df_filterd]).reset_index(drop=True)
+
+    if len(candle_df_filterd) > 70:
+        candle_df_filterd = candle_df_filterd.iloc[:-1]
+
+        candle_model = DataFrameModel(candle_df_filterd)
+        ui.tableView_5.setModel(candle_model)
+        ui.tableView_5.resizeColumnsToContents()
+        ui.tableView_5.verticalHeader().setVisible(False)
+        header = ui.tableView_5.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)

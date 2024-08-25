@@ -18,7 +18,7 @@
 
 import function
 import function_real
-import fuction_complex
+import function_complex
 
 import pandas as pd
 import numpy as np
@@ -76,7 +76,6 @@ class DataFrameModel(QAbstractTableModel):
         return None
 
 def main():
-    function.file_load() #API KEYS LOAD
 
     #초기 윈도우 생성
     app = QApplication(sys.argv)
@@ -86,66 +85,45 @@ def main():
     ui = Ui_MainWindow()
     ui.setupUi(main_window)  # QMainWindow에 UI 설정
 
+    # API KEYS LOAD
+    function.file_load()  # API KEYS LOAD
+
+    # setting initial
+    function_complex.setting_initial(ui)
+
     #계좌 + 청산 업데이트
-    fuction_complex.Account(ui)
+    function_complex.Account(ui)
 
     # 주문 완료 및 취소 항목(1시간 이내)
-    fuction_complex.Order_Complete(ui, ticker)
+    function_complex.Order_Complete(ui, ticker)
 
     #주문 대기 및 예약 항목 + 취소 버튼
-    fuction_complex.Order_Wait(ui, ticker)
+    function_complex.Order_Wait(ui, ticker)
 
     #초기 분봉 업데이트
-    candle_df_filterd = fuction_complex.Candle_initial(ui, ticker)
-
-    # 분봉 업데이트(1분 주기)
-    def candle_update(time):
-
-        nonlocal candle_df_filterd
-
-        time_8061 = time.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
-        # 1분 봉 최신 업데이트
-        minute_df = function.candle(1, ticker, 1, time_8061)
-        minute_df['candle_date_time_utc'] = pd.to_datetime(minute_df['candle_date_time_utc'])
-        minute_df['candle_date_time_kst'] = pd.to_datetime(minute_df['candle_date_time_kst'])
-        minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'CLOSE',
-                                  'opening_price': 'OPEN', 'high_price': 'HIGH', 'low_price': 'LOW'}, inplace=True)
-        minute_df_filterd = minute_df[['UTC', 'KST', 'CLOSE', 'OPEN', 'HIGH', 'LOW']]
-        candle_df_filterd = pd.concat([minute_df_filterd, candle_df_filterd]).reset_index(drop=True)
-
-        if len(candle_df_filterd) > 70:
-            candle_df_filterd = candle_df_filterd.iloc[:-1]
-
-        candle_model = DataFrameModel(candle_df_filterd)
-        ui.tableView_5.setModel(candle_model)
-        ui.tableView_5.resizeColumnsToContents()
-        ui.tableView_5.verticalHeader().setVisible(False)
-        header = ui.tableView_5.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
+    function_complex.Candle_initial(ui, ticker)
 
     # 시간 표시 및 시간 관련 이벤트 처리
     def showTime():
-
-        nonlocal candle_df_filterd
 
         # 현재 시각 가져오기
         time = QDateTime.currentDateTime()
         ui.lcdNumber.display(time.toString('yyyy-MM-dd HH:mm:ss'))
 
-        # 00초
+        # 분봉 업데이트(1분 주기)
         if time.time().second() == 5:
-           candle_update(time)
-
-    #Refresh 버튼 처리
-    def refresh() :
-        fuction_complex.Account(ui)
-        fuction_complex.Order_Wait(ui, ticker)
-
-    ui.pushButton_8.clicked.connect(refresh)
+           function_complex.candle_update(time, ticker, ui)
 
     timer = QTimer()
     timer.timeout.connect(showTime)
-    timer.start(1000)  # 60초마다 업데이트
+    timer.start(1000)
+
+    # Refresh 버튼 처리
+    def refresh():
+        function_complex.Account(ui)
+        function_complex.Order_Wait(ui, ticker)
+
+    ui.pushButton_8.clicked.connect(refresh)
 
     # 메인 윈도우 보여주기 및 애플리케이션 실행
     main_window.show()
