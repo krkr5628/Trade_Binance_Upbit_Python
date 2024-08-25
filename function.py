@@ -170,13 +170,13 @@ def open_order(ticker, type, ord_type, volume, price) :
     print(df)
     print('-----ORDER--------------')
 
-def close_order(uuid) :
+def close_order(uuid_tmp) :
     access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
     secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
 
     params = {
-        'uuid': uuid
+        'uuid': uuid_tmp
     }
     query_string = unquote(urlencode(params, doseq=True)).encode("utf-8")
 
@@ -199,9 +199,8 @@ def close_order(uuid) :
 
     response = requests.delete(server_url + '/v1/order', params=params, headers=headers)
     data = response.json()
-    df = pd.DataFrame(data)
     print('-----CANCEL--------------')
-    print(df)
+    print(data)
     print('-----CANCEL--------------')
 
 def order_wait_history(ticker) :

@@ -75,7 +75,7 @@ def Account(ui) :
     header = ui.tableView_7.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
-    def cancel_selected_orders():
+    def clear_selected_orders():
         ui.textBrowser_2.append("TEST1")
         for row in range(hold_model.rowCount()):
             item = hold_model.item(row, result_df.columns.get_loc('Select'))
@@ -84,9 +84,9 @@ def Account(ui) :
                 volume = hold_model.item(row, result_df.columns.get_loc('balance')).text()
 
                 #open_order(ticker, type, ord_type, volume, price)
-                function.cancel_order(uuid, 'ask', 'market', volume, '0')
+                function.open_order(uuid, 'ask', 'market', volume, '0')
 
-    ui.pushButton_10.clicked.connect(cancel_selected_orders)
+    ui.pushButton_6.clicked.connect(clear_selected_orders)
 
 def Order_Wait(ui, ticker) :
     # 주문 대기 및 예약 항목
@@ -113,6 +113,10 @@ def Order_Wait(ui, ticker) :
                     item = QStandardItem()
                     item.setCheckable(True)
                     item.setCheckState(Qt.Checked if value else Qt.Unchecked)
+                    item.setData(row, Qt.UserRole)  # row 정보를 저장
+
+                    # itemChanged 이벤트를 통해 체크박스 상태 변경 시 데이터 모델에 반영
+                    item.setData(False, Qt.UserRole + 1)
                 else:
                     item = QStandardItem(str(value))
                 items.append(item)
@@ -124,16 +128,30 @@ def Order_Wait(ui, ticker) :
         header = ui.tableView_3.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
-        # 청산 버튼 이벤트 연결
-        def Clear_selected_orders():
-            ui.textBrowser_2.append("TEST1")
-            for row in range(order_wait_model.rowCount()):
-                item = order_wait_model.item(row, order_wait_data_filtered.columns.get_loc('Select'))
-                if item.checkState() == Qt.Checked:
-                    ticker = order_wait_model.item(row, order_wait_data_filtered.columns.get_loc('uuid')).text()
-                    function.open_order(ticker)
+        def on_item_changed(item):
+            if item.isCheckable():
+                row = item.data(Qt.UserRole)
+                col = order_wait_data_filtered.columns.get_loc('Select')
+                order_wait_data_filtered.iloc[row, col] = (item.checkState() == Qt.Checked)
 
-        ui.pushButton_6.clicked.connect(Clear_selected_orders)
+        # itemChanged 시그널 연결
+        order_wait_model.itemChanged.connect(on_item_changed)
+
+        # 청산 버튼 이벤트 연결
+        def cancel_selected_orders():
+            # 'Select'와 'uuid' 열의 인덱스를 미리 가져옵니다.
+            select_col = order_wait_data_filtered.columns.get_loc('Select')
+            uuid_col = order_wait_data_filtered.columns.get_loc('uuid')
+
+            for row in range(order_wait_model.rowCount()):
+                ui.textBrowser_2.append("TEST2")
+                item = order_wait_model.item(row, select_col)  # 'Select' 열의 항목을 가져옴
+                if item is not None and item.checkState() == Qt.Checked:
+                    uuid = order_wait_model.item(row, uuid_col).text()  # 'uuid' 열의 텍스트를 가져옴
+                    ui.textBrowser_2.append(f"Canceling order: {uuid}")
+                    function.close_order(uuid)
+
+        ui.pushButton_10.clicked.connect(cancel_selected_orders)
 
 def Order_Complete(ui, ticker) :
     # 주문 완료 및 취소 항목(1시간 이내)

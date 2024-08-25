@@ -136,6 +136,13 @@ def main():
         if time.time().second() == 5:
            candle_update(time)
 
+    #Refresh 버튼 처리
+    def refresh() :
+        fuction_complex.Account(ui)
+        fuction_complex.Order_Wait(ui, ticker)
+
+    ui.pushButton_8.clicked.connect(refresh)
+
     timer = QTimer()
     timer.timeout.connect(showTime)
     timer.start(1000)  # 60초마다 업데이트
