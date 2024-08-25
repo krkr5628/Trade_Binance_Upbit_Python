@@ -50,31 +50,6 @@ from urllib.parse import urlencode, unquote
 
 ticker = "KRW-XRP"
 
-class DataFrameModel(QAbstractTableModel):
-    def __init__(self, df=pd.DataFrame(), parent=None):
-        super(DataFrameModel, self).__init__(parent)
-        self._df = df
-
-    def rowCount(self, parent=None):
-        return len(self._df)
-
-    def columnCount(self, parent=None):
-        return len(self._df.columns)
-
-    def data(self, index, role=Qt.DisplayRole):
-        if index.isValid():
-            if role == Qt.DisplayRole:
-                return str(self._df.iloc[index.row(), index.column()])
-        return None
-
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
-                return self._df.columns[section]
-            elif orientation == Qt.Vertical:
-                return self._df.index[section]
-        return None
-
 def main():
 
     #초기 윈도우 생성
@@ -118,13 +93,14 @@ def main():
     timer.timeout.connect(showTime)
     timer.start(1000)
 
-    # Refresh 버튼 처리
+    # Refresh 버튼
     def refresh():
         function_complex.Account(ui, ticker)
         function_complex.Order_Wait(ui, ticker)
+        function_complex.Order_Complete(ui, ticker)
     ui.pushButton_8.clicked.connect(refresh)
 
-    #매수 주문
+    #매수 주문 버튼
     def order() :
 
         #시장가 => 매수할 총 금액 입력, 지정가 => 호가 입력
@@ -149,6 +125,8 @@ def main():
 
         #open_order(ticker, type, ord_type, volume, price, ui)
         function.open_order(ticker, 'bid', ord_type, ord_type_hoga, price_volume_order, ui)
+        refresh()
+
     ui.pushButton_11.clicked.connect(order)
 
     # 메인 윈도우 보여주기 및 애플리케이션 실행

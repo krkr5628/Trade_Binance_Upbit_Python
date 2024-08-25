@@ -128,6 +128,10 @@ def Account(ui, ticker) :
                 ui.textBrowser_2.append(f"Clear order: {ticker} / market / {volume_order}")
                 # 지정된 매개변수로 function.open_order 호출
                 function.open_order(ticker, 'ask', 'market', volume_order, 'null', ui)
+                #항목 Refresh
+                Account(ui, ticker)
+                Order_Wait(ui, ticker)
+                Order_Complete(ui, ticker)
 
         ui.pushButton_6.clicked.connect(clear_selected_orders)
 
@@ -184,7 +188,7 @@ def Order_Wait(ui, ticker) :
         # itemChanged 시그널 연결
         order_wait_model.itemChanged.connect(on_item_changed)
 
-        # 청산 버튼 이벤트 연결
+        # 취소 버튼 이벤트 연결
         def cancel_selected_orders():
             # 'Select'와 'uuid' 열의 인덱스를 미리 가져옵니다.
             select_col = order_wait_data_filtered.columns.get_loc('Select')
@@ -196,6 +200,10 @@ def Order_Wait(ui, ticker) :
                     uuid = order_wait_model.item(row, uuid_col).text()  # 'uuid' 열의 텍스트를 가져옴
                     ui.textBrowser_2.append(f"Canceling order: {uuid}")
                     function.close_order(uuid)
+                    # 항목 Refresh
+                    Account(ui, ticker)
+                    Order_Wait(ui, ticker)
+                    Order_Complete(ui, ticker)
 
         ui.pushButton_10.clicked.connect(cancel_selected_orders)
     else :
