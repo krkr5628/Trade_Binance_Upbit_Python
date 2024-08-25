@@ -22,4 +22,5 @@
 - 기타 : GPT 4o
 
 # FORM1 : 메인 화면
-![image](https://github.com/user-attachments/assets/ee80b7f6-f3ae-49b7-b8c8-14ecd73978ac)
+![image](https://github.com/user-attachments/assets/8116925c-e81c-428f-8bc3-6dc212c101cf)
+
