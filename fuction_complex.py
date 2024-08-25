@@ -84,7 +84,7 @@ def Account(ui) :
                 volume = hold_model.item(row, result_df.columns.get_loc('balance')).text()
 
                 #open_order(ticker, type, ord_type, volume, price)
-                function.cancel_order(uuid, 'ask', 'market', volume, '')
+                function.cancel_order(uuid, 'ask', 'market', volume, '0')
 
     ui.pushButton_10.clicked.connect(cancel_selected_orders)
 

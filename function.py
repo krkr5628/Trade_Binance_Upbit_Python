@@ -166,7 +166,9 @@ def open_order(ticker, type, ord_type, volume, price) :
     response = requests.post(server_url + '/v1/orders', json=params, headers=headers)
     data = response.json()
     df = pd.DataFrame(data)
+    print('-----ORDER--------------')
     print(df)
+    print('-----ORDER--------------')
 
 def close_order(uuid) :
     access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
