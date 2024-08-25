@@ -19,14 +19,14 @@ def file_load() :
     os.environ['UPBIT_OPEN_API_SECRET_KEY'] = Secret_Key
     os.environ['UPBIT_OPEN_API_SERVER_URL'] = 'https://api.upbit.com'
 
-def hoga(ticker) :
+def hoga_list(ticker) :
     url = f"https://api.upbit.com/v1/orderbook?markets={ticker}&level=0"
-
     headers = {"accept": "application/json"}
-
     response = requests.get(url, headers=headers)
-
-    print(response.text)
+    data = response.json()
+    orderbook_units = data[0]['orderbook_units']
+    df = pd.DataFrame(orderbook_units, columns=['ask_price', 'bid_price'])
+    return df
 
 def Market_Data() :
     # API 요청 URL
@@ -146,8 +146,6 @@ def open_order(ticker, type, ord_type, volume, price, ui) :
     access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
     secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
-
-    volume
 
     params = {
         'market': ticker,

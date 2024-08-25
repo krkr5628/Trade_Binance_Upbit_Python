@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 
 import function
 import function_real
@@ -243,8 +244,10 @@ def candle_update(time, ticker, ui):
     global candle_df_filterd
 
     time_8061 = time.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
+
     # 1분 봉 최신 업데이트
     minute_df = function.candle(1, ticker, 1, time_8061)
+
     minute_df['candle_date_time_utc'] = pd.to_datetime(minute_df['candle_date_time_utc'])
     minute_df['candle_date_time_kst'] = pd.to_datetime(minute_df['candle_date_time_kst'])
     minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'CLOSE',
@@ -261,3 +264,23 @@ def candle_update(time, ticker, ui):
         ui.tableView_5.verticalHeader().setVisible(False)
         header = ui.tableView_5.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
+
+def hoga(ticker, ord_type_hoga) :
+    hoga_list = function.hoga_list(ticker);
+    split_index = len(ord_type_hoga.rstrip('0123456789'))
+    hoga_type = ord_type_hoga[:split_index]
+    hoga_num = ord_type_hoga[split_index:]
+    try:
+        if hoga_type == 'Bid':
+            return hoga_list['bid_price'].iloc[int(hoga_num) - 1]
+        else:
+            return hoga_list['ask_price'].iloc[int(hoga_num) - 1]
+    except IndexError:
+        print(f"IndexError: {hoga_num} is out of range")
+        return None
+    except KeyError:
+        print(f"KeyError: Column not found in hoga_list")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None

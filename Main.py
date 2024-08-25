@@ -143,8 +143,9 @@ def main():
         if ord_type_hoga == 'Market' :
             ord_type_hoga = 0
             ord_type = 'price'
-
-        #호가 계산
+        else :
+            # 호가 계산
+            ord_type_hoga = function_complex.hoga(ticker, ord_type_hoga)
 
         #open_order(ticker, type, ord_type, volume, price, ui)
         function.open_order(ticker, 'bid', ord_type, ord_type_hoga, price_volume_order, ui)
