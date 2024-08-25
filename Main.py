@@ -18,6 +18,7 @@
 
 import function
 import function_real
+import fuction_complex
 
 import pandas as pd
 import numpy as np
@@ -85,121 +86,17 @@ def main():
     ui = Ui_MainWindow()
     ui.setupUi(main_window)  # QMainWindow에 UI 설정
 
-    # 시간 표시 및 시간 관련 이벤트 처리
-    def showTime():
+    #계좌 + 청산 업데이트
+    fuction_complex.Account(ui)
 
-        nonlocal candle_df_filterd
+    # 주문 완료 및 취소 항목(1시간 이내)
+    fuction_complex.Order_Complete(ui, ticker)
 
-        # 현재 시각 가져오기
-        time = QDateTime.currentDateTime()
-        ui.lcdNumber.display(time.toString('yyyy-MM-dd HH:mm:ss'))
-
-        # 00초
-        if time.time().second() == 5:
-            candle_update(time)
-
-    timer = QTimer()
-    timer.timeout.connect(showTime)
-    timer.start(1000)  # 60초마다 업데이트
-
-    #계좌 항목
-    hold_df = function.hold_account()
-    hold_df['balance'] = hold_df['balance'].astype(float)
-    hold_df['avg_buy_price'] = hold_df['avg_buy_price'].astype(float)
-    hold_df['Total_KRW'] = hold_df['balance']*hold_df['avg_buy_price']
-
-    krw_items = hold_df[(hold_df['Total_KRW'] >= 1000)]
-    cash_item = hold_df[hold_df['currency'] == 'KRW']
-    result_df = pd.concat([cash_item, krw_items])
-
-    # 체크박스 열 추가
-    result_df['Select'] = False
-
-    #hold_model = DataFrameModel(result_df)
-
-    hold_model = QStandardItemModel()
-    hold_model.setColumnCount(len(result_df.columns))
-    hold_model.setHorizontalHeaderLabels(result_df.columns)
-
-    for row in range(len(result_df)):
-        items = []
-        for col in range(len(result_df.columns)):
-            value = result_df.iloc[row, col]
-            if col == result_df.columns.get_loc('Select'):  # Select 열에 체크박스 추가
-                item = QStandardItem()
-                item.setCheckable(True)
-                item.setCheckState(Qt.Checked if value else Qt.Unchecked)
-            else:
-                item = QStandardItem(str(value))
-            items.append(item)
-        hold_model.appendRow(items)
-
-    ui.tableView_7.setModel(hold_model)
-    ui.tableView_7.resizeColumnsToContents()
-    ui.tableView_7.verticalHeader().setVisible(False)
-    header = ui.tableView_7.horizontalHeader()
-    header.setSectionResizeMode(QHeaderView.Stretch)
-
-    #주문 대기 및 예약 항목
-    order_wait_data = function.order_wait_history(ticker)
-    if not order_wait_data.empty :
-        order_wait_data_filtered = order_wait_data[['side', 'ord_type', 'price', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']].copy()
-
-        #order_wait_model = DataFrameModel(order_wait_data_filtered)
-
-        # 체크박스 열 추가
-        order_wait_data_filtered.loc[:, 'Select'] = False
-
-        order_wait_model = QStandardItemModel()
-        order_wait_model.setColumnCount(len(order_wait_data_filtered.columns))
-        order_wait_model.setHorizontalHeaderLabels(order_wait_data_filtered.columns)
-
-        for row in range(len(order_wait_data_filtered)):
-            items = []
-            for col in range(len(order_wait_data_filtered.columns)):
-                value = order_wait_data_filtered.iloc[row, col]
-                if col == order_wait_data_filtered.columns.get_loc('Select'):  # Select 열에 체크박스 추가
-                    item = QStandardItem()
-                    item.setCheckable(True)
-                    item.setCheckState(Qt.Checked if value else Qt.Unchecked)
-                else:
-                    item = QStandardItem(str(value))
-                items.append(item)
-            order_wait_model.appendRow(items)
-
-        ui.tableView_3.setModel(order_wait_model)
-        ui.tableView_3.resizeColumnsToContents()
-        ui.tableView_3.verticalHeader().setVisible(False)
-        header = ui.tableView_3.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-
-    #주문 완료 및 취소 항목(1시간 이내)
-    time_close = QDateTime.currentDateTime()
-    time_8061_close = time_close.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
-    order_close_data = function.order_close_history(ticker, time_8061_close)
-    if not order_close_data.empty:
-        order_close_data_filtered = order_close_data[['side', 'ord_type', 'price', 'state', 'created_at', 'volume', 'executed_volume', 'remaining_volume']]
-        order_close_model = DataFrameModel(order_close_data_filtered)
-        ui.tableView_4.setModel(order_close_model)
-        ui.tableView_4.resizeColumnsToContents()
-        ui.tableView_4.verticalHeader().setVisible(False)
-        header = ui.tableView_4.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
+    #주문 대기 및 예약 항목 + 취소 버튼
+    fuction_complex.Order_Wait(ui, ticker)
 
     #초기 분봉 업데이트
-    candle_df = function.candle(1, ticker, 60, 0).iloc[1:]
-    candle_df['candle_date_time_utc'] = pd.to_datetime(candle_df['candle_date_time_utc'])
-    candle_df['candle_date_time_kst'] = pd.to_datetime(candle_df['candle_date_time_kst'])
-    candle_df.rename(columns={'candle_date_time_utc': 'UTC','candle_date_time_kst': 'KST', 'trade_price' : 'CLOSE', 'opening_price' : 'OPEN', 'high_price' : 'HIGH', 'low_price' : 'LOW'}, inplace=True)
-    ui.label.setText(candle_df["market"][1])
-    candle_df_filterd = candle_df[['UTC', 'KST', 'CLOSE', 'OPEN', 'HIGH', 'LOW']]
-
-    candle_model = DataFrameModel(candle_df_filterd)
-    ui.tableView_5.setModel(candle_model)
-    ui.tableView_5.resizeColumnsToContents()
-    ui.tableView_5.verticalHeader().setVisible(False)
-    header = ui.tableView_5.horizontalHeader()
-    header.setSectionResizeMode(QHeaderView.Stretch)
+    candle_df_filterd = fuction_complex.Candle_initial(ui, ticker)
 
     # 분봉 업데이트(1분 주기)
     def candle_update(time):
@@ -226,22 +123,30 @@ def main():
         header = ui.tableView_5.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
-    #버튼 처리
-    def on_pushButton_10_clicked():
-        ui.textBrowser_2.append("TEST COMPLETE")
+    # 시간 표시 및 시간 관련 이벤트 처리
+    def showTime():
 
-    ui.pushButton_10.clicked.connect(on_pushButton_10_clicked)
+        nonlocal candle_df_filterd
+
+        # 현재 시각 가져오기
+        time = QDateTime.currentDateTime()
+        ui.lcdNumber.display(time.toString('yyyy-MM-dd HH:mm:ss'))
+
+        # 00초
+        if time.time().second() == 5:
+           candle_update(time)
+
+    timer = QTimer()
+    timer.timeout.connect(showTime)
+    timer.start(1000)  # 60초마다 업데이트
 
     # 메인 윈도우 보여주기 및 애플리케이션 실행
     main_window.show()
 
-    # WebSocket 비동기 처리
+    # 비동기 시세 처리
     loop = QEventLoop(app)
     loop.create_task(function_real.web_socket_initial(ui))
     loop.run_forever()
-
-    #
-    #function_real.web_scoket_initial()
 
 if __name__ == "__main__":
     main()

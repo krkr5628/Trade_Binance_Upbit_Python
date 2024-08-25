@@ -1,5 +1,4 @@
 import pandas as pd
-
 import jwt
 import hashlib
 import os
@@ -196,7 +195,9 @@ def close_order(uuid) :
     response = requests.delete(server_url + '/v1/order', params=params, headers=headers)
     data = response.json()
     df = pd.DataFrame(data)
+    print('-----CANCEL--------------')
     print(df)
+    print('-----CANCEL--------------')
 
 def order_wait_history(ticker) :
     access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
