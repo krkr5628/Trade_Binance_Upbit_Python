@@ -292,3 +292,5 @@ def hoga(ticker, ord_type_hoga) :
     except Exception as e:
         print(f"Unexpected error: {e}")
         return None
+
+#def candle_feature() :
