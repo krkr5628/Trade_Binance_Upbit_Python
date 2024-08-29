@@ -50,6 +50,7 @@ from urllib.parse import urlencode, unquote
 
 file_path1 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt"
 file_path2 = ""
+file_path3 = ""
 ticker = "KRW-XRP"
 candle_row = 216000 #43200, 86400, 129600, 172800, 216000, 259200, 302400
 
@@ -91,6 +92,8 @@ def main():
         # 분봉 업데이트(1분 주기)
         if time.time().second() == 5:
            function_complex.Candle_update(time, ticker, ui)
+
+        #예측
 
     timer = QTimer()
     timer.timeout.connect(showTime)

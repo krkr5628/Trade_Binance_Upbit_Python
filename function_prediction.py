@@ -100,9 +100,7 @@ def predction(model, X_test_seq) :
     # 이진 분류로 변환
     predictions = (predictions > 0.5).astype(int)
 
-    # 예측 결과를 데이터프레임에 추가
-    data['prediction_Transformer'] = np.nan  # 예측 결과를 담을 열을 초기화
-    data.iloc[sequence_length - 1:sequence_length - 1 + len(predictions),
-    data.columns.get_loc('prediction_Transformer')] = predictions
+    # 예측 결과의 마지막 값을 받기
+    last_prediction = True if predictions.iloc[-1] == 1 else False
 
-    return predictions
+    return last_prediction

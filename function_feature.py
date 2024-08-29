@@ -1,7 +1,7 @@
 import ta
 import pandas as pd
 
-def data_feature_1(data) :
+def data_feature_1(data, size) :
     # ATR 계산 함수
     def calculate_atr(df, periods):
         for period in periods:
