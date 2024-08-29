@@ -48,7 +48,10 @@ import requests
 import uuid
 from urllib.parse import urlencode, unquote
 
+file_path1 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt"
+file_path2 = ""
 ticker = "KRW-XRP"
+candle_row = 216000 #43200, 86400, 129600, 172800, 216000, 259200, 302400
 
 def main():
 
@@ -61,7 +64,7 @@ def main():
     ui.setupUi(main_window)  # QMainWindow에 UI 설정
 
     # API KEYS LOAD
-    function.file_load()  # API KEYS LOAD
+    function.file_load(file_path1)  # API KEYS LOAD
 
     # setting initial
     function_complex.setting_initial(ui)
@@ -87,7 +90,7 @@ def main():
 
         # 분봉 업데이트(1분 주기)
         if time.time().second() == 5:
-           function_complex.candle_update(time, ticker, ui)
+           function_complex.Candle_update(time, ticker, ui)
 
     timer = QTimer()
     timer.timeout.connect(showTime)

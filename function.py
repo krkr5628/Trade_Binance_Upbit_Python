@@ -8,9 +8,8 @@ import json
 from urllib.parse import urlencode, unquote
 from urllib.parse import quote
 
-def file_load() :
-    file_path = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt"
-    data = pd.read_csv(file_path)
+def file_load(path) :
+    data = pd.read_csv(path)
     #
     Access_Key = data.loc[data['type'] == 'Access_Key', 'value'].values[0]
     Secret_Key = data.loc[data['type'] == 'Secret_Key', 'value'].values[0]
@@ -18,6 +17,11 @@ def file_load() :
     os.environ['UPBIT_OPEN_API_ACCESS_KEY'] = Access_Key
     os.environ['UPBIT_OPEN_API_SECRET_KEY'] = Secret_Key
     os.environ['UPBIT_OPEN_API_SERVER_URL'] = 'https://api.upbit.com'
+
+def file_load2(path) :
+    data = pd.read_csv(path)
+    return data
+
 
 def hoga_list(ticker) :
     url = f"https://api.upbit.com/v1/orderbook?markets={ticker}&level=0"
@@ -67,10 +71,8 @@ def Market_Data_Specific(ticker) :
     else:
         print(f"Failed to retrieve data: {response.status_code}")
 
-#분봉 데이터 불러오기
+#분봉 데이터 불러오기(최대 200개)
 def candle(type, ticker, count, time) :
-
-    url = ""
 
     # API 요청 URL
     if time == 0 :

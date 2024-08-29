@@ -1,3 +1,5 @@
+import datetime
+
 import pandas as pd
 import re
 
@@ -247,7 +249,15 @@ def Candle_initial(ui, ticker) :
     header = ui.tableView_5.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
-def candle_update(time, ticker, ui):
+#데이터의 마지막 데이터 날짜를 기반으로 최신 데이터를 추가한 업데이트 시작
+def Candle_initial_update(data, time, ticker, ui, path2) :
+    candle_df = function.file_load2(path2)
+    last_time = pd.to_datetime(candle_df['open_time'].iloc[-1])
+    currnet_time = datetime.timezone
+
+    return
+
+def Candle_update(time, ticker, ui):
 
     global candle_df_filterd
 
