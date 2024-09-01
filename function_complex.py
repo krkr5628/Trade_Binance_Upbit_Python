@@ -1,5 +1,6 @@
 import datetime
 from datetime import datetime
+import time
 
 import pandas as pd
 import re
@@ -239,9 +240,11 @@ def Candle_initial_update(ticker, path2):
     global candle_df_features
 
     candle_df = function.file_load2(path2)
-    candle_df['KST'] = candle_df['KST']
+    candle_df['KST'] = pd.to_datetime(candle_df['UTC']) + pd.Timedelta(hours=9)
+    print(candle_df.head())
+    print(candle_df.tail())
 
-    last_time = pd.to_datetime(candle_df['UTC'].iloc[-1])
+    last_time = pd.to_datetime(candle_df['UTC'].iloc[-1]) + pd.Timedelta(minutes=1)
     utc_now = datetime.utcnow()
 
     #차이 시간 만큼 데이터 수신
@@ -249,15 +252,40 @@ def Candle_initial_update(ticker, path2):
     time_part = time_difference // 200
     time_part_leave = time_difference % 200
 
-    print(f"{time_difference} / {time_part} / {time_part_leave}")
+    print(f"{last_time} / {utc_now} / {time_difference} / {time_part} / {time_part_leave}")
 
-    # 데이터 수신(최신 데이터가 아랫쪽)
+    minute_df_filter_concat = pd.DataFrame()
+
+    #시간 기준 데이터 수신
+    for idx in range(int(time_part)) :
+        last_time = last_time + pd.Timedelta(minutes=200)
+        time_8061 = last_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        print(time_8061)
+        minute_df = function.candle(1, ticker, 200, time_8061)
+        minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
+                                  'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
+        minute_df_filter = minute_df[['UTC', 'KST', 'close', 'open', 'high', 'low']]
+        minute_df_filter = minute_df_filter.iloc[::-1].reset_index(drop=True)
+        #
+        minute_df_filter
+        #
+        minute_df_filter_concat = pd.concat([minute_df_filter_concat, minute_df_filter]).reset_index(drop=True)
+        #
+        print(minute_df_filter.head())
+        print(minute_df_filter.tail())
+        #
+        time.sleep(1)
+
+    #나머지 기준 데이터 수신
+    last_time = last_time + pd.Timedelta(minutes=int(time_part_leave))
     time_8061 = last_time.strftime("%Y-%m-%dT%H:%M:%S")
-    minute_df = function.candle(1, ticker, 200, time_8061)
+    print(time_8061)
+    minute_df = function.candle(1, ticker, int(time_part_leave), time_8061)
     minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
                               'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
-    minute_df_filter= minute_df[['UTC', 'KST', 'close', 'open', 'high', 'low']]
+    minute_df_filter = minute_df[['UTC', 'KST', 'close', 'open', 'high', 'low']]
     minute_df_filter = minute_df_filter.iloc[::-1].reset_index(drop=True)
+    minute_df_filter_concat = pd.concat([minute_df_filter_concat, minute_df_filter]).reset_index(drop=True)
 
     print(minute_df_filter.head())
     print(minute_df_filter.tail())
@@ -273,6 +301,7 @@ def Candle_initial(ui, ticker) :
 
     # 초기 분봉 업데이트
     candle_df = function.candle(1, ticker, 60, 0).iloc[1:]
+    #
     candle_df['candle_date_time_utc'] = pd.to_datetime(candle_df['candle_date_time_utc'])
     candle_df['candle_date_time_kst'] = pd.to_datetime(candle_df['candle_date_time_kst'])
     candle_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
