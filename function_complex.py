@@ -256,6 +256,8 @@ def Candle_initial_update(ticker, path2):
 
     minute_df_filter_concat = pd.DataFrame()
 
+    last_time_save = last_time
+
     #시간 기준 데이터 수신
     for idx in range(int(time_part)) :
         last_time = last_time + pd.Timedelta(minutes=200)
@@ -267,7 +269,10 @@ def Candle_initial_update(ticker, path2):
         minute_df_filter = minute_df[['UTC', 'KST', 'close', 'open', 'high', 'low']]
         minute_df_filter = minute_df_filter.iloc[::-1].reset_index(drop=True)
         #
-        minute_df_filter
+        minute_df_filter["UTC"] = pd.to_datetime(minute_df_filter["UTC"])
+        minute_df_filter = minute_df_filter[minute_df_filter["UTC"] >= last_time_save]
+        #
+        last_time_save = last_time
         #
         minute_df_filter_concat = pd.concat([minute_df_filter_concat, minute_df_filter]).reset_index(drop=True)
         #
@@ -289,7 +294,6 @@ def Candle_initial_update(ticker, path2):
 
     print(minute_df_filter.head())
     print(minute_df_filter.tail())
-
 
     # 데이터 지표 추가(추가된 데이터만)
     #candle_df_features = function_feature.data_feature_1(candle_df, time_difference)
