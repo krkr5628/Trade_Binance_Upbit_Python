@@ -48,9 +48,9 @@ import requests
 import uuid
 from urllib.parse import urlencode, unquote
 
-file_path1 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt"
-file_path2 = ""
-file_path3 = ""
+file_path1 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt" #setting
+file_path2 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\Goole Drive\\Data\\SOL_Data_Test_1m_Recent_Indicator3_essential.csv" #data
+file_path3 = "" #model
 ticker = "KRW-XRP"
 candle_row = 216000 #43200, 86400, 129600, 172800, 216000, 259200, 302400
 
@@ -78,6 +78,9 @@ def main():
 
     #주문 대기 및 예약 항목 + 취소 버튼
     function_complex.Order_Wait(ui, ticker)
+
+    #초기 데이터 로딩
+    function_complex.Candle_initial_update(ticker, file_path2)
 
     #초기 분봉 업데이트
     function_complex.Candle_initial(ui, ticker)
@@ -142,6 +145,7 @@ def main():
     loop = QEventLoop(app)
     loop.create_task(function_real.web_socket_initial(ui))
     loop.run_forever()
+
 
 if __name__ == "__main__":
     main()

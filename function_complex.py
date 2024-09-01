@@ -1,4 +1,5 @@
 import datetime
+from datetime import datetime
 
 import pandas as pd
 import re
@@ -216,7 +217,8 @@ def Order_Wait(ui, ticker) :
 def Order_Complete(ui, ticker) :
     # 주문 완료 및 취소 항목(1시간 이내)
     time_close = QDateTime.currentDateTime()
-    time_8061_close = time_close.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
+    utc_time = time_close.toUTC()
+    time_8061_close = utc_time.toString("yyyy-MM-dd'T'HH:mm:ss'Z'")
     order_close_data = function.order_close_history(ticker, time_8061_close)
     if not order_close_data.empty:
         order_close_data_filtered = order_close_data[
@@ -231,6 +233,39 @@ def Order_Complete(ui, ticker) :
 candle_df_filterd_display = pd.DataFrame()
 candle_df_features = pd.DataFrame()
 
+# 데이터의 마지막 데이터 날짜를 기반으로 최신 데이터를 추가한 업데이트 시작
+def Candle_initial_update(ticker, path2):
+
+    global candle_df_features
+
+    candle_df = function.file_load2(path2)
+    candle_df['KST'] = candle_df['KST']
+
+    last_time = pd.to_datetime(candle_df['UTC'].iloc[-1])
+    utc_now = datetime.utcnow()
+
+    #차이 시간 만큼 데이터 수신
+    time_difference = (utc_now - last_time).total_seconds() // 60
+    time_part = time_difference // 200
+    time_part_leave = time_difference % 200
+
+    print(f"{time_difference} / {time_part} / {time_part_leave}")
+
+    # 데이터 수신(최신 데이터가 아랫쪽)
+    time_8061 = last_time.strftime("%Y-%m-%dT%H:%M:%S")
+    minute_df = function.candle(1, ticker, 200, time_8061)
+    minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
+                              'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
+    minute_df_filter= minute_df[['UTC', 'KST', 'close', 'open', 'high', 'low']]
+    minute_df_filter = minute_df_filter.iloc[::-1].reset_index(drop=True)
+
+    print(minute_df_filter.head())
+    print(minute_df_filter.tail())
+
+
+    # 데이터 지표 추가(추가된 데이터만)
+    #candle_df_features = function_feature.data_feature_1(candle_df, time_difference)
+
 #단순 표시용
 def Candle_initial(ui, ticker) :
 
@@ -240,10 +275,10 @@ def Candle_initial(ui, ticker) :
     candle_df = function.candle(1, ticker, 60, 0).iloc[1:]
     candle_df['candle_date_time_utc'] = pd.to_datetime(candle_df['candle_date_time_utc'])
     candle_df['candle_date_time_kst'] = pd.to_datetime(candle_df['candle_date_time_kst'])
-    candle_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'CLOSE',
-                              'opening_price': 'OPEN', 'high_price': 'HIGH', 'low_price': 'LOW'}, inplace=True)
+    candle_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
+                              'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
     ui.label.setText(candle_df["market"][1])
-    candle_df_filterd_display = candle_df[['UTC', 'KST', 'CLOSE', 'OPEN', 'HIGH', 'LOW']]
+    candle_df_filterd_display = candle_df[['UTC', 'KST', 'close', 'open', 'high', 'low']]
 
     candle_model = DataFrameModel(candle_df_filterd_display)
     ui.tableView_5.setModel(candle_model)
@@ -251,27 +286,6 @@ def Candle_initial(ui, ticker) :
     ui.tableView_5.verticalHeader().setVisible(False)
     header = ui.tableView_5.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
-
-
-# 데이터의 마지막 데이터 날짜를 기반으로 최신 데이터를 추가한 업데이트 시작
-def Candle_initial_update(data, time, ticker, ui, path2):
-    candle_df = function.file_load2(path2)
-    last_time = pd.to_datetime(candle_df['open_time'].iloc[-1])
-    currnet_time = datetime.timezone
-
-    #총 분 차이
-    time_difference = (currnet_time - last_time).total_seconds() / 60
-
-    # 차이 시간 만큼 데이터 수신
-    time_part = time_difference / 200
-    time_part_leave = time_difference % 200
-
-    # 데이터 수신(최신 데이터가 아랫쪽)
-
-
-    # 데이터 지표 추가(추가된 데이터만)
-    candle_df_features = function_feature.data_feature_1(candle_df, time_difference)
-
 
 def Candle_update(time, ticker, ui):
 
@@ -285,17 +299,17 @@ def Candle_update(time, ticker, ui):
 
     minute_df['candle_date_time_utc'] = pd.to_datetime(minute_df['candle_date_time_utc'])
     minute_df['candle_date_time_kst'] = pd.to_datetime(minute_df['candle_date_time_kst'])
-    minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'CLOSE',
-                                'opening_price': 'OPEN', 'high_price': 'HIGH', 'low_price': 'LOW'}, inplace=True)
-    minute_df_filterd = minute_df[['UTC', 'KST', 'CLOSE', 'OPEN', 'HIGH', 'LOW']]
+    minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
+                                'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
+    minute_df_filterd = minute_df[['UTC', 'KST', 'close', 'open', 'high', 'low']]
     candle_df_filterd_display = pd.concat([minute_df_filterd, candle_df_filterd_display]).reset_index(drop=True)
 
     # 1분 봉 최신 업데이트_Table
-    candle_df_features = pd.concat([candle_df_features, minute_df_filterd]).reset_index(drop=True)
-    candle_df_features = function_feature.data_feature_1(candle_df_features, 60)
+    #candle_df_features = pd.concat([candle_df_features, minute_df_filterd]).reset_index(drop=True)
+    #candle_df_features = function_feature.data_feature_1(candle_df_features, 60)
 
     #단순 표시용
-    if len(candle_df_filterd_display) > 70:
+    if len(candle_df_filterd_display) < 70:
         candle_df_filterd = candle_df_filterd_display.iloc[:-1]
 
         candle_model = DataFrameModel(candle_df_filterd)
