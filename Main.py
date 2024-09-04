@@ -80,10 +80,10 @@ def main():
     function_complex.Order_Wait(ui, ticker)
 
     #초기 데이터 로딩
-    function_complex.Candle_initial_update(ticker, file_path2)
+    function_complex.Candle_initial_update(ui, ticker, file_path2)
 
     #초기 분봉 업데이트
-    function_complex.Candle_initial(ui, ticker)
+    #function_complex.Candle_initial(ui, ticker)
 
     # 시간 표시 및 시간 관련 이벤트 처리
     def showTime():

@@ -235,8 +235,9 @@ candle_df_filterd_display = pd.DataFrame()
 candle_df_features = pd.DataFrame()
 
 # 데이터의 마지막 데이터 날짜를 기반으로 최신 데이터를 추가한 업데이트 시작
-def Candle_initial_update(ticker, path2):
+def Candle_initial_update(ui, ticker, path2):
 
+    global candle_df_filterd_display
     global candle_df_features
 
     candle_df = function.file_load2(path2)
@@ -252,7 +253,7 @@ def Candle_initial_update(ticker, path2):
     time_part = time_difference // 200
     time_part_leave = time_difference % 200
 
-    print(f"{last_time} / {utc_now} / {time_difference} / {time_part} / {time_part_leave}")
+    #print(f"{last_time} / {utc_now} / {time_difference} / {time_part} / {time_part_leave}")
 
     minute_df_filter_concat = pd.DataFrame()
 
@@ -262,7 +263,7 @@ def Candle_initial_update(ticker, path2):
     for idx in range(int(time_part)) :
         last_time = last_time + pd.Timedelta(minutes=200)
         time_8061 = last_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-        print(time_8061)
+        #print(time_8061)
         minute_df = function.candle(1, ticker, 200, time_8061)
         minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
                                   'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
@@ -276,27 +277,42 @@ def Candle_initial_update(ticker, path2):
         #
         minute_df_filter_concat = pd.concat([minute_df_filter_concat, minute_df_filter]).reset_index(drop=True)
         #
-        print(minute_df_filter.head())
-        print(minute_df_filter.tail())
-        #
         time.sleep(1)
 
     #나머지 기준 데이터 수신
     last_time = last_time + pd.Timedelta(minutes=int(time_part_leave))
     time_8061 = last_time.strftime("%Y-%m-%dT%H:%M:%S")
-    print(time_8061)
+    #print(time_8061)
     minute_df = function.candle(1, ticker, int(time_part_leave), time_8061)
     minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
                               'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
     minute_df_filter = minute_df[['UTC', 'KST', 'close', 'open', 'high', 'low']]
     minute_df_filter = minute_df_filter.iloc[::-1].reset_index(drop=True)
+
     minute_df_filter_concat = pd.concat([minute_df_filter_concat, minute_df_filter]).reset_index(drop=True)
 
-    print(minute_df_filter.head())
-    print(minute_df_filter.tail())
+    minute_df_filter_concat.loc[:, 'UTC'] = pd.to_datetime(minute_df_filter_concat['UTC'])
+    minute_df_filter_concat.loc[:, 'KST'] = pd.to_datetime(minute_df_filter_concat['UTC'])
+
+    print(minute_df_filter_concat.head())
+    print(minute_df_filter_concat.tail())
 
     # 데이터 지표 추가(추가된 데이터만)
-    #candle_df_features = function_feature.data_feature_1(candle_df, time_difference)
+    #candle_df_features = function_feature.data_feature_1(minute_df_filter_concat, time_difference)
+
+    #병합
+    #candle_df_features = pd.concat([candle_df, candle_df_features]).reset_index(drop=True)
+
+    #마지막 60행을 DISPLAY용으로 출력
+    candle_df_filterd_display = minute_df_filter_concat.iloc[-60:]
+    candle_df_filterd_display = candle_df_filterd_display.iloc[::-1].reset_index(drop=True)
+
+    candle_model = DataFrameModel(candle_df_filterd_display)
+    ui.tableView_5.setModel(candle_model)
+    ui.tableView_5.resizeColumnsToContents()
+    ui.tableView_5.verticalHeader().setVisible(False)
+    header = ui.tableView_5.horizontalHeader()
+    header.setSectionResizeMode(QHeaderView.Stretch)
 
 #단순 표시용
 def Candle_initial(ui, ticker) :
@@ -320,6 +336,7 @@ def Candle_initial(ui, ticker) :
     header = ui.tableView_5.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
+#주기 업데이트
 def Candle_update(time, ticker, ui):
 
     global candle_df_filterd_display
@@ -341,16 +358,26 @@ def Candle_update(time, ticker, ui):
     #candle_df_features = pd.concat([candle_df_features, minute_df_filterd]).reset_index(drop=True)
     #candle_df_features = function_feature.data_feature_1(candle_df_features, 60)
 
-    #단순 표시용
-    if len(candle_df_filterd_display) < 70:
-        candle_df_filterd = candle_df_filterd_display.iloc[:-1]
+    #DataFrameModel
+    if len(candle_df_filterd_display) <= 70:
 
-        candle_model = DataFrameModel(candle_df_filterd)
+        candle_model = DataFrameModel(candle_df_filterd_display)
         ui.tableView_5.setModel(candle_model)
         ui.tableView_5.resizeColumnsToContents()
         ui.tableView_5.verticalHeader().setVisible(False)
         header = ui.tableView_5.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
+    else :
+        candle_df_filterd_display = candle_df_filterd_display.iloc[:70]
+
+        candle_model = DataFrameModel(candle_df_filterd_display)
+        ui.tableView_5.setModel(candle_model)
+        ui.tableView_5.resizeColumnsToContents()
+        ui.tableView_5.verticalHeader().setVisible(False)
+        header = ui.tableView_5.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+
+
 
 def hoga(ticker, ord_type_hoga) :
     hoga_list = function.hoga_list(ticker);
@@ -371,5 +398,3 @@ def hoga(ticker, ord_type_hoga) :
     except Exception as e:
         print(f"Unexpected error: {e}")
         return None
-
-#def candle_feature() :
