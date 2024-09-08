@@ -298,7 +298,7 @@ def Candle_initial_update(ui, ticker, path2):
     print(minute_df_filter_concat.tail())
 
     # 데이터 지표 추가(추가된 데이터만)
-    #candle_df_features = function_feature.data_feature_1(minute_df_filter_concat, time_difference)
+    #candle_df_features = function_feature.data_feature_1(minute_df_filter_concat)
 
     #병합
     #candle_df_features = pd.concat([candle_df, candle_df_features]).reset_index(drop=True)
@@ -343,6 +343,8 @@ def Candle_update(time, ticker, ui):
     global candle_df_features
 
     time_8061 = time.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
+
+    # 프로그램 지연으로 인한 값 보정을 위하여 마지막 시각 및 현 시간 비교해서 데이터 수신 개수 파악
 
     # 1분 봉 최신 업데이트_Display
     minute_df = function.candle(1, ticker, 1, time_8061)

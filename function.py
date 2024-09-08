@@ -8,6 +8,8 @@ import json
 from urllib.parse import urlencode, unquote
 from urllib.parse import quote
 
+feature_data = pd.DataFrame()
+
 def file_load(path) :
     data = pd.read_csv(path)
     #
@@ -22,6 +24,13 @@ def file_load2(path) :
     data = pd.read_csv(path)
     return data
 
+def file_load3(path) :
+
+    global feature_data
+
+    data = pd.read_csv(path)
+    #type,index1,index2,index3,index4,index5,apply1,apply2,apply3,apply4,apply5
+    feature_data = pd.DataFrame(data)
 
 def hoga_list(ticker) :
     url = f"https://api.upbit.com/v1/orderbook?markets={ticker}&level=0"

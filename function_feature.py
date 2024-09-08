@@ -1,7 +1,104 @@
 import ta
 import pandas as pd
 
-def data_feature_1(data, size) :
+import function
+
+feature_simple = []
+
+atr_periods = []
+stoch_periods = []
+bollinger_periods = []
+ichimoku_periods = []
+supertrend_settings = []
+parabolic_sar_settings = []
+williams_r_periods = []
+momentum_periods = []
+roc_periods = []
+cmo_periods = []
+mfi_periods = []
+rsi_periods = []
+efi_periods = []
+rvi_periods = []
+vr_periods = []
+cci_periods = []
+disparity_periods = []
+moving_average_periods = []
+
+def feature_inital_match() :
+
+    global atr_periods
+    global stoch_periods
+    global bollinger_periods
+    global ichimoku_periods
+    global supertrend_settings
+    global parabolic_sar_settings
+    global williams_r_periods
+    global momentum_periods
+    global roc_periods
+    global cmo_periods
+    global mfi_periods
+    global rsi_periods
+    global efi_periods
+    global rvi_periods
+    global vr_periods
+    global cci_periods
+    global disparity_periods
+    global moving_average_periods
+
+    # 모든 계산 수행(initial)
+    atr_periods = [5, 10, 14, 20, 50]
+    stoch_periods = [(14, 3), (21, 5), (9, 3), (5, 2), (20, 7)]
+    bollinger_periods = [10, 20, 50, 100, 200]
+    ichimoku_periods = [9, 26, 52, 100, 200]
+    supertrend_settings = [(7, 3, 14), (10, 3, 20), (14, 2, 10), (20, 4, 50), (50, 5, 5)]
+    parabolic_sar_settings = [(0.02, 0.2), (0.04, 0.2), (0.06, 0.2), (0.08, 0.2), (0.1, 0.2)]
+    williams_r_periods = [10, 20, 30, 40, 50]
+    momentum_periods = [10, 20, 30, 40, 50]
+    roc_periods = [10, 20, 30, 40, 50]
+    cmo_periods = [10, 20, 30, 40, 50]
+    mfi_periods = [10, 20, 30, 40, 50]
+    rsi_periods = [10, 20, 30, 40, 50]
+    efi_periods = [2, 13, 5, 10, 25]
+    rvi_periods = [10, 20, 30, 40, 50]
+    vr_periods = [10, 20, 30, 40, 50]
+    cci_periods = [10, 20, 30, 40, 50]
+    disparity_periods = [5, 10, 20, 50, 100, 200]
+    moving_average_periods = [5, 10, 20, 50, 100, 200]
+
+def feature_match() :
+
+    global atr_periods
+    global stoch_periods
+    global bollinger_periods
+    global ichimoku_periods
+    global supertrend_settings
+    global parabolic_sar_settings
+    global williams_r_periods
+    global momentum_periods
+    global roc_periods
+    global cmo_periods
+    global mfi_periods
+    global rsi_periods
+    global efi_periods
+    global rvi_periods
+    global vr_periods
+    global cci_periods
+    global disparity_periods
+    global moving_average_periods
+
+    for feature in function.feature_data.iterrows() :
+
+        # type 제외하고 값 입력
+        # type,index1,index2,index3,index4,index5,apply1,apply2,apply3,apply4,apply5
+        feature_time_tmp = []
+
+        for idx in range(5) :
+            if (feature[idx + 1]):
+                feature_time_tmp.append(feature[idx + 6])
+
+        feature_simple.append(feature_time_tmp)
+
+def data_feature_1(data) :
     # ATR 계산 함수
     def calculate_atr(df, periods):
         for period in periods:
@@ -191,26 +288,25 @@ def data_feature_1(data, size) :
     data['low'] = pd.to_numeric(data['low'], downcast='float')
     data['volume'] = pd.to_numeric(data['volume'], downcast='float')
 
-
-    # 모든 계산 수행
-    atr_periods = [5, 10, 14, 20, 50]
-    stoch_periods = [(14, 3), (21, 5), (9, 3), (5, 2), (20, 7)]
-    bollinger_periods = [10, 20, 50, 100, 200]
-    ichimoku_periods = [9, 26, 52, 100, 200]
-    supertrend_settings = [(7, 3, 14), (10, 3, 20), (14, 2, 10), (20, 4, 50), (50, 5, 5)]
-    parabolic_sar_settings = [(0.02, 0.2), (0.04, 0.2), (0.06, 0.2), (0.08, 0.2), (0.1, 0.2)]
-    williams_r_periods = [10, 20, 30, 40, 50]
-    momentum_periods = [10, 20, 30, 40, 50]
-    roc_periods = [10, 20, 30, 40, 50]
-    cmo_periods = [10, 20, 30, 40, 50]
-    mfi_periods = [10, 20, 30, 40, 50]
-    rsi_periods = [10, 20, 30, 40, 50]
-    efi_periods = [2, 13, 5, 10, 25]
-    rvi_periods = [10, 20, 30, 40, 50]
-    vr_periods = [10, 20, 30, 40, 50]
-    cci_periods = [10, 20, 30, 40, 50]
-    disparity_periods = [5, 10, 20, 50, 100, 200]
-    moving_average_periods = [5, 10, 20, 50, 100, 200]
+    #
+    global atr_periods
+    global stoch_periods
+    global bollinger_periods
+    global ichimoku_periods
+    global supertrend_settings
+    global parabolic_sar_settings
+    global williams_r_periods
+    global momentum_periods
+    global roc_periods
+    global cmo_periods
+    global mfi_periods
+    global rsi_periods
+    global efi_periods
+    global rvi_periods
+    global vr_periods
+    global cci_periods
+    global disparity_periods
+    global moving_average_periods
 
     #사용하는 지표만 선택적으로 사용하도록 향후 구성
     data = calculate_atr(data, atr_periods)

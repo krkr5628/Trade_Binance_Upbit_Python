@@ -18,6 +18,7 @@
 
 import function
 import function_real
+import function_feature
 import function_complex
 
 import pandas as pd
@@ -50,7 +51,8 @@ from urllib.parse import urlencode, unquote
 
 file_path1 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt" #setting
 file_path2 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\Goole Drive\\Data\\SOL_Data_Test_1m_Recent_Indicator3_essential.csv" #data
-file_path3 = "" #model
+file_path3 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_feature_setting.txt" #setting-feature
+file_path4 = "" #model
 ticker = "KRW-XRP"
 candle_row = 216000 #43200, 86400, 129600, 172800, 216000, 259200, 302400
 
@@ -66,6 +68,13 @@ def main():
 
     # API KEYS LOAD
     function.file_load(file_path1)  # API KEYS LOAD
+
+    # Feature Settomg LOAD
+    #function.file_load(file_path3)
+
+    # Feature Matching
+    function_feature.feature_inital_match()
+    #function_feature.feature_match()
 
     # setting initial
     function_complex.setting_initial(ui)
