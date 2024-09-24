@@ -98,6 +98,7 @@ def feature_match() :
 
         feature_simple.append(feature_time_tmp)
 
+#지속적 업데이를 위한 구조화 필수
 def data_feature_1(data) :
     # ATR 계산 함수
     def calculate_atr(df, periods):
