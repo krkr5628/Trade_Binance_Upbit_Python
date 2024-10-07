@@ -107,6 +107,7 @@ def main():
 
         #예측
 
+    # 타이머 생성
     timer = QTimer()
     timer.timeout.connect(showTime)
     timer.start(1000)
