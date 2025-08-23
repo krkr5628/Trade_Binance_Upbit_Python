@@ -185,11 +185,14 @@ f'RSI_{period}'] = ta.rsi(df['close'], length=period)
 
     def calculate_rvi(df, periods):
         for period in periods:
-            df[f'Relative_Vigor_Index_{period}'] = ta.rsi(df['close'], length=period)  # 참고: ta 라이브러리에 RVI가 없어 RSI로 대체됨
+            # 경고: 'ta' 라이브러리에는 RVI(Relative Vigor Index)가 내장되어 있지 않습니다.
+            # 아래 코드는 임시방편으로 RSI를 사용하고 있으며, 정확한 RVI 지표가 아닙니다.
+            # 향후 정확한 RVI 로직으로 교체해야 합니다.
+            df[f'Relative_Vigor_Index_{period}'] = ta.rsi(df['close'], length=period)
         return df
 
     def calculate_vr(df, periods):
-        # 'ta' 라이브러리에 VR이 없으므로 직접 구현
+        # 'ta' 라이브러리에 VR(Volume Ratio)이 없으므로 직접 구현
         def volume_ratio(close, volume, period):
             vr = []
             for i in range(len(close)):
@@ -199,10 +202,15 @@ f'RSI_{period}'] = ta.rsi(df['close'], length=period)
                     vol_up = sum(volume[j] for j in range(i - period + 1, i + 1) if close[j] > close[j - 1])
                     vol_down = sum(volume[j] for j in range(i - period + 1, i + 1) if close[j] < close[j - 1])
                     vol_same = sum(volume[j] for j in range(i - period + 1, i + 1) if close[j] == close[j - 1])
-                    if (vol_down + vol_same / 2) == 0:
-                        vr_value = 100
+
+                    # 분모가 0이 되는 경우 (하락 거래량 + 보합 거래량/2 가 0일 때) 처리
+                    # 이는 해당 기간 동안 하락 또는 보합이 없었음을 의미하므로, 매수 압력이 매우 강한 것으로 간주합니다.
+                    # 일반적으로 VR 값은 100을 기준으로 해석하므로, 이 경우 100을 반환하거나 매우 큰 값을 설정할 수 있습니다. 여기서는 100으로 설정.
+                    denominator = vol_down + vol_same / 2
+                    if denominator == 0:
+                        vr_value = 100  # 또는 매우 큰 값(예: 1000)으로 설정하여 강한 매수 신호 표현
                     else:
-                        vr_value = (vol_up + vol_same / 2) / (vol_down + vol_same / 2) * 100
+                        vr_value = (vol_up + vol_same / 2) / denominator * 100
                     vr.append(vr_value)
             return vr
         for period in periods:

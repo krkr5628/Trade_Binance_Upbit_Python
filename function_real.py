@@ -46,9 +46,11 @@ async def web_socket_initial(ui):
     # 웹소켓 연결 성공 시 호출될 내부 비동기 함수
     async def on_connect(ws):
         """
-        웹소켓 연결이 성공적으로 이루어졌을 때, 구독 메시지를 전송합니다.
+        웹소켓 연결이 성공적으로 이루어졌을 때, 구독 메시지를 전송하고 UI에 상태를 로깅합니다.
         """
-        print("WebSocket connected!")
+        log_message = "[INFO] 실시간 시세 서버에 연결되었습니다."
+        print(log_message)
+        ui.textBrowser_2.append(log_message)
         # 구독할 내용을 JSON 형식으로 만들어 서버에 전송
         # ticket: 고유 식별자, type: 구독 종류(ticker), codes: 티커 목록
         await ws.send('[{"ticket":"UNIQUE_TICKET"},{"type":"ticker", "codes":["KRW-XRP"], "isOnlyRealtime" : "True"}]')
@@ -56,16 +58,20 @@ async def web_socket_initial(ui):
     # 웹소켓 에러 발생 시 호출될 내부 비동기 함수
     async def on_error(ws, err):
         """
-        웹소켓 통신 중 에러가 발생했을 때 호출됩니다.
+        웹소켓 통신 중 에러가 발생했을 때 호출됩니다. UI에 에러를 로깅합니다.
         """
-        print(f"WebSocket error: {err}")
+        log_message = f"[ERROR] 실시간 시세 서버 에러: {err}"
+        print(log_message)
+        ui.textBrowser_2.append(log_message)
 
     # 웹소켓 연결 종료 시 호출될 내부 비동기 함수
     async def on_close(ws, code, reason):
         """
-        웹소켓 연결이 종료되었을 때 호출됩니다.
+        웹소켓 연결이 종료되었을 때 호출됩니다. UI에 상태를 로깅합니다.
         """
-        print(f"WebSocket closed! Code: {code}, Reason: {reason}")
+        log_message = f"[INFO] 실시간 시세 서버 연결이 종료되었습니다. Code: {code}, Reason: {reason}"
+        print(log_message)
+        ui.textBrowser_2.append(log_message)
 
     # 웹소켓 인증을 위한 JWT 토큰 생성
     access_key = os.environ.get('UPBIT_OPEN_API_ACCESS_KEY')
@@ -94,11 +100,19 @@ async def web_socket_initial(ui):
                 await on_connect(ws)
                 await on_message(ws)
         except websockets.exceptions.ConnectionClosed as e:
+            # 정상적인 종료가 아닐 때만 로그를 남깁니다.
+            if not e.code == 1000:
+                log_message = f"[ERROR] 웹소켓 연결이 비정상적으로 종료되었습니다: {e}"
+                print(log_message)
+                ui.textBrowser_2.append(log_message)
             await on_close(ws, e.code, e.reason)
         except Exception as e:
-            # on_error는 ws 객체가 필요하므로, 여기서는 직접 에러를 출력
-            print(f"An unexpected error occurred: {e}")
+            log_message = f"[ERROR] 웹소켓 처리 중 예외 발생: {e}"
+            print(log_message)
+            ui.textBrowser_2.append(log_message)
 
         # 재연결 시도 전 잠시 대기
-        print("Attempting to reconnect in 5 seconds...")
+        reconnect_message = "[INFO] 5초 후 실시간 시세 서버에 재연결을 시도합니다..."
+        print(reconnect_message)
+        ui.textBrowser_2.append(reconnect_message)
         await asyncio.sleep(5)

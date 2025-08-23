@@ -130,10 +130,13 @@ def Account(ui, ticker):
             Order_Wait(ui, ticker)
             Order_Complete(ui, ticker)
 
-        # 기존 연결을 끊고 새롭게 연결
+        # 버튼 클릭 시그널을 연결합니다.
+        # 이 함수(Account)는 새로고침 시마다 호출되므로, 중복 연결을 방지하기 위해
+        # 기존의 연결을 먼저 끊고(disconnect) 다시 연결(connect)합니다.
         try:
             ui.pushButton_6.clicked.disconnect()
         except RuntimeError:
+            # 연결이 없는 경우 RuntimeError가 발생할 수 있으므로 pass 처리
             pass
         ui.pushButton_6.clicked.connect(clear_selected_orders)
     else:
@@ -189,10 +192,13 @@ def Order_Wait(ui, ticker):
             Order_Wait(ui, ticker)
             Order_Complete(ui, ticker)
 
-        # 기존 연결을 끊고 새롭게 연결
+        # 버튼 클릭 시그널을 연결합니다.
+        # 이 함수(Order_Wait)는 새로고침 시마다 호출되므로, 중복 연결을 방지하기 위해
+        # 기존의 연결을 먼저 끊고(disconnect) 다시 연결(connect)합니다.
         try:
             ui.pushButton_10.clicked.disconnect()
         except RuntimeError:
+            # 연결이 없는 경우 RuntimeError가 발생할 수 있으므로 pass 처리
             pass
         ui.pushButton_10.clicked.connect(cancel_selected_orders)
     else:
@@ -224,61 +230,39 @@ def Order_Complete(ui, ticker):
 candle_df_filterd_display = pd.DataFrame()  # UI 표시용
 candle_df_features = pd.DataFrame()         # 기술적 지표 포함 전체 데이터용
 
-# 초기 캔들 데이터를 로드하고 업데이트하는 함수
+# 초기 캔들 데이터를 로드하고 UI에 표시하는 함수
 def Candle_initial_update(ui, ticker, path2):
     """
-    로컬 CSV 파일에서 과거 캔들 데이터를 로드하고, 마지막 시간부터 현재까지의 데이터를
-    API를 통해 가져와 병합한 후 UI에 표시합니다.
+    프로그램 시작 시 초기 캔들 데이터를 설정합니다.
+    현재는 Upbit API를 통해 최근 60개의 1분봉 데이터를 가져와 UI에 표시하는 간단한 로직을 사용합니다.
+    (주석 처리된 코드는 로컬 데이터와 API 데이터를 병합하는 더 복잡한 로직의 흔적입니다.)
     """
     global candle_df_filterd_display
     global candle_df_features
 
-    # 로컬 데이터 로드 및 KST 변환
-    candle_df = function.file_load2(path2)
-    candle_df['KST'] = pd.to_datetime(candle_df['UTC']) + pd.Timedelta(hours=9)
-    print("Local data loaded:")
-    print(candle_df.tail())
+    # API를 통해 최근 60개의 1분봉 데이터를 가져옵니다.
+    candle_df = function.candle(1, ticker, 60, 0)
 
-    # 로컬 데이터의 마지막 시간부터 현재까지의 누락된 데이터 가져오기
-    last_time = pd.to_datetime(candle_df['UTC'].iloc[-1]) + pd.Timedelta(minutes=1)
-    utc_now = datetime.utcnow()
-    time_difference = (utc_now - last_time).total_seconds() // 60
+    # 데이터가 없을 경우 함수 종료
+    if candle_df.empty:
+        print("[ERROR] 초기 캔들 데이터를 가져오지 못했습니다.")
+        return
 
-    if time_difference > 0:
-        # API는 최대 200개씩 데이터를 반환하므로, 여러 번 호출해야 할 수 있음
-        time_part = time_difference // 200
-        time_part_leave = time_difference % 200
-        minute_df_filter_concat = pd.DataFrame()
-        last_time_save = last_time
+    # 첫 번째 행은 현재 진행중인 캔들이므로 제외
+    candle_df = candle_df.iloc[1:]
 
-        # 200개씩 데이터 수신
-        for _ in range(int(time_part)):
-            last_time += pd.Timedelta(minutes=200)
-            time_8061 = last_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-            minute_df = function.candle(1, ticker, 200, time_8061)
-            # (데이터 처리 로직은 생략)
-            time.sleep(0.1) # API 요청 간격
-
-        # 나머지 데이터 수신
-        # (데이터 처리 로직은 생략)
-
-    # (이하 데이터 병합 및 UI 업데이트 로직)
-    # 현재는 초기 로딩 및 업데이트 로직이 복잡하여 일부 생략됨
-    # 임시로 최근 60개 데이터만 API로 가져오는 로직으로 대체
-    Candle_initial(ui, ticker)
-
-# 초기 캔들 데이터(최근 60개)를 표시하는 함수
-def Candle_initial(ui, ticker):
-    """
-    API를 통해 최근 60개의 1분봉 데이터를 가져와 UI 테이블뷰에 표시합니다.
-    """
-    global candle_df_filterd_display
-    candle_df = function.candle(1, ticker, 60, 0).iloc[1:]
+    # 컬럼 이름 변경
     candle_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
                               'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
-    ui.label.setText(candle_df["market"][1])
+
+    # UI에 티커 이름 설정
+    if not candle_df.empty:
+        ui.label.setText(candle_df["market"].iloc[0])
+
+    # 표시할 컬럼만 선택하고, 최신순으로 정렬
     candle_df_filterd_display = candle_df[['UTC', 'KST', 'close', 'open', 'high', 'low']].iloc[::-1].reset_index(drop=True)
 
+    # UI 테이블뷰에 모델 설정
     candle_model = DataFrameModel(candle_df_filterd_display)
     ui.tableView_5.setModel(candle_model)
     ui.tableView_5.resizeColumnsToContents()
