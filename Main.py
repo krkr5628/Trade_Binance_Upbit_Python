@@ -16,10 +16,11 @@
 #out_of_scope : 기능 신청 안함
 #호가표 존재 빢쏌
 
-import function
-import function_real
-import function_feature
-import function_complex
+# 필요한 모듈 임포트
+import function  # API 관련 함수 모음
+import function_real  # 실시간 웹소켓 관련 함수 모음
+import function_feature  # 기술적 지표 계산 함수 모음
+import function_complex  # 복합적인 기능 및 UI 연동 함수 모음
 
 import pandas as pd
 import numpy as np
@@ -30,18 +31,20 @@ import asyncio
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QHeaderView
 from PySide6.QtCore import QAbstractTableModel, Qt, QTimer, QDateTime
-from Main_ui import Ui_MainWindow
-from qasync import QEventLoop
+from Main_ui import Ui_MainWindow  # UI 레이아웃
+from qasync import QEventLoop  # Qt와 asyncio를 함께 사용하기 위한 이벤트 루프
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 
 import tkinter as tk
 from tkinter import ttk
 
+# 머신러닝 모델을 위한 scikit-learn 라이브러리
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 
+# API 인증 및 요청을 위한 라이브러리
 import jwt
 import hashlib
 import os
@@ -49,113 +52,124 @@ import requests
 import uuid
 from urllib.parse import urlencode, unquote
 
-file_path1 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt" #setting
-file_path2 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\Goole Drive\\Data\\SOL_Data_Test_1m_Recent_Indicator3_essential.csv" #data
-file_path3 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_feature_setting.txt" #setting-feature
-file_path4 = "" #model
-ticker = "KRW-XRP"
-candle_row = 216000 #43200, 86400, 129600, 172800, 216000, 259200, 302400
+# 파일 경로 설정
+file_path1 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_setting.txt" # API 설정 파일
+file_path2 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\Goole Drive\\Data\\SOL_Data_Test_1m_Recent_Indicator3_essential.csv" # 과거 데이터 파일
+file_path3 = "C:\\Users\\krkr5\\OneDrive\\바탕 화면\\project\\password\\upbit_feature_setting.txt" # 기술적 지표 설정 파일
+file_path4 = "" # 학습된 모델 파일 경로 (현재 비어있음)
+ticker = "KRW-XRP"  # 거래할 코인 티커
+candle_row = 216000 # 캔들 데이터 행 수 (현재 사용되지 않음)
 
+# 메인 실행 함수
 def main():
 
-    #초기 윈도우 생성
+    # PyQt6 애플리케이션 생성
     app = QApplication(sys.argv)
     main_window = QMainWindow()
 
-    # Ui_MainWindow 인스턴스 생성
+    # UI 클래스 인스턴스화 및 메인 윈도우에 UI 설정
     ui = Ui_MainWindow()
-    ui.setupUi(main_window)  # QMainWindow에 UI 설정
+    ui.setupUi(main_window)
 
-    # API KEYS LOAD
-    function.file_load(file_path1)  # API KEYS LOAD
+    # API 키 로드
+    function.file_load(file_path1)
 
-    # Feature Settomg LOAD
+    # 기술적 지표 설정 로드 (현재 주석 처리됨)
     #function.file_load(file_path3)
 
-    # Feature Matching
+    # 기술적 지표 초기 설정
     function_feature.feature_inital_match()
-    #function_feature.feature_match()
+    #function_feature.feature_match() # 사용자 설정에 따른 매칭 (현재 주석 처리됨)
 
-    # setting initial
+    # UI 초기 설정 (콤보박스 등)
     function_complex.setting_initial(ui)
 
-    #계좌 + 청산 업데이트
+    # 계좌 정보 및 보유 자산 표시
     function_complex.Account(ui, ticker)
 
-    # 주문 완료 및 취소 항목(1시간 이내)
+    # 최근 1시간 동안의 완료/취소된 주문 내역 표시
     function_complex.Order_Complete(ui, ticker)
 
-    #주문 대기 및 예약 항목 + 취소 버튼
+    # 현재 대기 중인 주문 내역 표시
     function_complex.Order_Wait(ui, ticker)
 
-    #초기 데이터 로딩
+    # 로컬 CSV 파일 및 API를 통해 초기 캔들 데이터 로딩 및 표시
     function_complex.Candle_initial_update(ui, ticker, file_path2)
 
-    #초기 분봉 업데이트
+    # API를 통해서만 초기 캔들 데이터 로딩 (현재 주석 처리됨)
     #function_complex.Candle_initial(ui, ticker)
 
-    # 시간 표시 및 시간 관련 이벤트 처리
+    # 시간 표시 및 주기적 업데이트를 위한 내부 함수
     def showTime():
 
-        # 현재 시각 가져오기
+        # 현재 시간을 가져와 UI의 LCD 위젯에 표시
         time = QDateTime.currentDateTime()
         ui.lcdNumber.display(time.toString('yyyy-MM-dd HH:mm:ss'))
 
-        # 분봉 업데이트(1분 주기)
+        # 매 분 5초마다 캔들 데이터 업데이트
         if time.time().second() == 5:
            function_complex.Candle_update(time, ticker, ui)
 
+        # 예측 기능 (현재 구현되지 않음)
         #예측
 
-    # 타이머 생성
+    # 1초마다 showTime 함수를 호출하는 타이머 설정
     timer = QTimer()
     timer.timeout.connect(showTime)
     timer.start(1000)
 
-    # Refresh 버튼
+    # 'REFRESH' 버튼 클릭 시 호출될 내부 함수
     def refresh():
+        # 계좌, 대기 주문, 완료 주문 정보를 새로고침
         function_complex.Account(ui, ticker)
         function_complex.Order_Wait(ui, ticker)
         function_complex.Order_Complete(ui, ticker)
+    # UI의 'pushButton_8' (REFRESH 버튼)에 refresh 함수 연결
     ui.pushButton_8.clicked.connect(refresh)
 
-    #매수 주문 버튼
+    # 'ORDER' 버튼 클릭 시 호출될 내부 함수
     def order() :
 
-        #시장가 => 매수할 총 금액 입력, 지정가 => 호가 입력
+        # UI에서 주문 가격/수량 정보 가져오기
         price_volume_order = ui.textEdit_2.toPlainText()
 
-        #입력값이 없으면 경고
-        if not price_volume_order.strip():  # strip()으로 공백만 있는 경우도 체크
+        # 입력값이 없으면 경고 메시지 표시 후 종료
+        if not price_volume_order.strip():
             ui.textBrowser_2.append("[경고] 매수 금액 입력")
             return
 
+        # 최소 주문 금액 (5,000원) 체크 (현재 구현되지 않음)
         #매수 매도 5천원 넘지 않으면 경고
 
-        #주문 타입 확인
-        ord_type = 'limit'
+        # 주문 유형(지정가/시장가) 결정
+        ord_type = 'limit'  # 기본값: 지정가
         ord_type_hoga = ui.comboBox.currentText()
-        if ord_type_hoga == 'Market' :
-            ord_type_hoga = 0
-            ord_type = 'price'
+        if ord_type_hoga == 'Market' : # 시장가 선택 시
+            ord_type_hoga = 0  # 가격을 0으로 설정
+            ord_type = 'price' # 주문 유형을 'price' (시장가 매수)로 변경
         else :
-            # 호가 계산
+            # 지정가 선택 시, 해당 호가 계산
             ord_type_hoga = function_complex.hoga(ticker, ord_type_hoga)
 
-        #open_order(ticker, type, ord_type, volume, price, ui)
+        # 계산된 정보를 바탕으로 주문 함수 호출
         function.open_order(ticker, 'bid', ord_type, ord_type_hoga, price_volume_order, ui)
+        # 주문 후 정보 새로고침
         refresh()
 
+    # UI의 'pushButton_11' (ORDER 버튼)에 order 함수 연결
     ui.pushButton_11.clicked.connect(order)
 
-    # 메인 윈도우 보여주기 및 애플리케이션 실행
+    # 메인 윈도우 표시
     main_window.show()
 
-    # 비동기 시세 처리
+    # 비동기 웹소켓 처리를 위한 이벤트 루프 설정
     loop = QEventLoop(app)
+    # 웹소켓 연결 및 실시간 시세 수신 시작
     loop.create_task(function_real.web_socket_initial(ui))
+    # 이벤트 루프 실행
     loop.run_forever()
 
 
+# 이 스크립트가 직접 실행될 때 main 함수 호출
 if __name__ == "__main__":
     main()
