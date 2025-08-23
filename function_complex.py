@@ -1,16 +1,61 @@
-# 필요한 모듈 임포트
+# -*- coding: utf-8 -*-
+"""
+[File: function_complex.py]
+[Author: Jules (AI Agent)]
+[Date: 2025-08-23]
+
+[Summary]
+This module serves as the middle layer for the application's core business logic.
+It acts as a bridge between the low-level API module (`function.py`) and the UI (`Main.py`),
+handling data processing and complex functions for UI updates.
+
+[Global Variables]
+- `avg_price` (float): Stores the average buy price of the current ticker.
+- `candle_df_filterd_display` (pd.DataFrame): Stores the data to be displayed in the UI's candle chart table.
+- `candle_df_features` (pd.DataFrame): Stores the complete candle data that forms the basis for technical indicator calculations.
+
+[Dependencies & Interconnections]
+
+[Incoming Calls (External modules calling this module)]
+- `Main.py` -> `setting_initial()`: For initial UI setup.
+- `Main.py` -> `Account()`, `Order_Complete()`, `Order_Wait()`: For initializing and refreshing UI data.
+- `Main.py` -> `Candle_initial_update()`: For loading initial candle data.
+- `Main.py` -> `Candle_update()`: For updating candle data every minute.
+- `Main.py` -> `hoga()`: For getting the price for a limit order.
+
+[Outgoing Calls (This module calling external modules)]
+- `Account()` -> `function.hold_account()`: To fetch account information.
+- `Order_Wait()` -> `function.order_wait_history()`: To fetch open orders.
+- `Order_Complete()` -> `function.order_close_history()`: To fetch closed/cancelled orders.
+- `Candle_initial_update()` -> `function.candle()`: To fetch initial candle data.
+- `Candle_initial_update()` -> `function_feature.data_feature_1()`: For initial indicator calculation.
+- `Candle_update()` -> `function.candle()`: To fetch the latest 1-minute candle data.
+- `Candle_update()` -> `function_feature.data_feature_1()`: For recalculating indicators every minute.
+- `hoga()` -> `function.hoga_list()`: To fetch order book data.
+- `clear_selected_orders()` (internal function) -> `function.open_order()`: To place market sell (liquidation) orders.
+- `cancel_selected_orders()` (internal function) -> `function.close_order()`: To cancel an order.
+
+[Global Variable Access]
+- `Account()`: Updates the global `avg_price` variable.
+- `Candle_initial_update()`: Initializes the global `candle_df_filterd_display` and `candle_df_features` variables.
+- `Candle_update()`: Updates the global `candle_df_filterd_display` and `candle_df_features` variables.
+- `function_real.py` reads the `avg_price` variable from this module.
+- `Main.py` reads the `candle_df_features` variable from this module.
+"""
+
+# Import necessary modules
 import datetime
 from datetime import datetime
 import time
 import pandas as pd
 import re
 
-# 다른 모듈 임포트
+# Import other project modules
 import function
 import function_real
 import function_feature
 
-# PySide6 UI 관련 모듈 임포트
+# Import PySide6 UI modules
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QHeaderView
 from PySide6.QtCore import QAbstractTableModel, Qt, QTimer, QDateTime
@@ -18,10 +63,10 @@ from Main_ui import Ui_MainWindow
 from qasync import QEventLoop
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 
-# pandas DataFrame을 QTableView에 표시하기 위한 커스텀 모델 클래스
+# Custom model class to display pandas DataFrames in a QTableView
 class DataFrameModel(QAbstractTableModel):
     """
-    pandas DataFrame을 QTableView에 표시하기 위한 Qt 모델.
+    A Qt model for displaying pandas DataFrames in a QTableView.
     """
     def __init__(self, df=pd.DataFrame(), parent=None):
         super(DataFrameModel, self).__init__(parent)
@@ -46,27 +91,27 @@ class DataFrameModel(QAbstractTableModel):
                 return str(self._df.index[section])
         return None
 
-# UI 초기 설정을 위한 함수
+# Function for initial UI setup
 def setting_initial(ui):
     """
-    애플리케이션 시작 시 UI의 초기 상태를 설정합니다.
-    - 주문 유형 콤보박스에 항목 추가 및 기본값 설정
+    Sets the initial state of the UI when the application starts.
+    - Adds items to the order type combo box and sets a default value.
     """
     initial_values = ["Ask5", "Ask4", "Ask3", "Ask2", "Ask1", "Market", "Bid1", "Bid2", "Bid3", "Bid4", "Bid5"]
     ui.comboBox.addItems(initial_values)
     market_index = initial_values.index("Market")
     ui.comboBox.setCurrentIndex(market_index)
 
-# 실시간 수익률 계산을 위한 전역 변수 (평균 매수 단가)
+# Global variable for average buy price (used for real-time P/L calculation)
 avg_price = 0
 
-# 계좌 정보 및 보유 자산을 UI에 업데이트하는 함수
+# Function to update account information and holdings on the UI
 def Account(ui, ticker):
     """
-    API를 통해 계좌 정보를 가져와 가공한 후, UI의 테이블뷰에 표시합니다.
-    - 보유 자산 필터링 (1000원 이상)
-    - DataFrame을 QStandardItemModel로 변환하여 체크박스 기능 추가
-    - '청산' 버튼에 대한 이벤트 핸들러 연결
+    Fetches account information via the API, processes it, and displays it in the UI's table view.
+    - Filters assets with a total value >= 1000 KRW.
+    - Converts the DataFrame to a QStandardItemModel to add checkbox functionality.
+    - Connects an event handler to the 'Liquidate' button.
     """
     hold_df = function.hold_account()
     if not hold_df.empty:
@@ -76,18 +121,18 @@ def Account(ui, ticker):
         if not avg_price_filter.empty:
             avg_price = avg_price_filter['avg_buy_price'].values[0]
 
-        # 데이터 타입 변환 및 총 평가액 계산
+        # Convert data types and calculate total value
         hold_df['balance'] = hold_df['balance'].astype(float)
         hold_df['avg_buy_price'] = hold_df['avg_buy_price'].astype(float)
         hold_df['Total_KRW'] = hold_df['balance'] * hold_df['avg_buy_price']
 
-        # 1000원 이상 보유 자산 및 원화(KRW)만 필터링
+        # Filter assets worth over 1000 KRW and KRW balance
         krw_items = hold_df[(hold_df['Total_KRW'] >= 1000)]
         cash_item = hold_df[hold_df['currency'] == 'KRW']
         result_df = pd.concat([cash_item, krw_items])
-        result_df['Select'] = False  # 체크박스 선택 상태 저장을 위한 'Select' 열 추가
+        result_df['Select'] = False  # Add 'Select' column to store checkbox state
 
-        # QStandardItemModel을 사용하여 테이블뷰에 데이터 표시 (체크박스 포함)
+        # Use QStandardItemModel to display data in the table view (including checkboxes)
         hold_model = QStandardItemModel()
         hold_model.setColumnCount(len(result_df.columns))
         hold_model.setHorizontalHeaderLabels(result_df.columns)
@@ -111,44 +156,44 @@ def Account(ui, ticker):
         header = ui.tableView_7.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
-        # '청산' 버튼 클릭 시 선택된 항목을 시장가 매도하는 함수
+        # Function to market sell selected items when the 'Liquidate' button is clicked
         def clear_selected_orders():
             for row in range(hold_model.rowCount()):
                 if hold_model.item(row, result_df.columns.get_loc('Select')).checkState() == Qt.Checked:
                     if hold_model.item(row, result_df.columns.get_loc('currency')).text() == 'KRW':
                         continue
 
-                    # 선택된 코인의 티커와 매도 가능 수량 계산
+                    # Calculate the ticker and available volume for the selected coin
                     ticker_to_clear = hold_model.item(row, result_df.columns.get_loc('unit_currency')).text() + '-' + hold_model.item(row, result_df.columns.get_loc('currency')).text()
                     volume_order = str(float(hold_model.item(row, result_df.columns.get_loc('balance')).text()) - float(hold_model.item(row, result_df.columns.get_loc('locked')).text()))
 
                     ui.textBrowser_2.append(f"Clear order: {ticker_to_clear} / market / {volume_order}")
                     function.open_order(ticker_to_clear, 'ask', 'market', volume_order, 'null', ui)
 
-            # 정보 새로고침
+            # Refresh information
             Account(ui, ticker)
             Order_Wait(ui, ticker)
             Order_Complete(ui, ticker)
 
-        # 버튼 클릭 시그널을 연결합니다.
-        # 이 함수(Account)는 새로고침 시마다 호출되므로, 중복 연결을 방지하기 위해
-        # 기존의 연결을 먼저 끊고(disconnect) 다시 연결(connect)합니다.
+        # Connect the button's clicked signal.
+        # Since this function (Account) is called on every refresh, we first disconnect
+        # any existing connection to prevent duplicate signal handlers.
         try:
             ui.pushButton_6.clicked.disconnect()
         except RuntimeError:
-            # 연결이 없는 경우 RuntimeError가 발생할 수 있으므로 pass 처리
+            # A RuntimeError can occur if there's no connection, so we pass.
             pass
         ui.pushButton_6.clicked.connect(clear_selected_orders)
     else:
-        # 보유 자산이 없을 경우 테이블 비우기
+        # Clear the table if there are no assets
         ui.tableView_7.setModel(QStandardItemModel())
 
-# 미체결 주문을 UI에 업데이트하는 함수
+# Function to update open orders on the UI
 def Order_Wait(ui, ticker):
     """
-    API를 통해 미체결 주문 내역을 가져와 UI의 테이블뷰에 표시합니다.
-    - QStandardItemModel을 사용하여 체크박스 기능 추가
-    - '취소' 버튼에 대한 이벤트 핸들러 연결
+    Fetches open orders via the API and displays them in the UI's table view.
+    - Adds checkbox functionality using QStandardItemModel.
+    - Connects an event handler to the 'Cancel' button.
     """
     order_wait_data = function.order_wait_history(ticker)
     if not order_wait_data.empty:
@@ -179,7 +224,7 @@ def Order_Wait(ui, ticker):
         header = ui.tableView_3.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
-        # '취소' 버튼 클릭 시 선택된 주문을 취소하는 함수
+        # Function to cancel selected orders when the 'Cancel' button is clicked
         def cancel_selected_orders():
             for row in range(order_wait_model.rowCount()):
                 if order_wait_model.item(row, order_wait_data_filtered.columns.get_loc('Select')).checkState() == Qt.Checked:
@@ -187,29 +232,27 @@ def Order_Wait(ui, ticker):
                     ui.textBrowser_2.append(f"Canceling order: {uuid}")
                     function.close_order(uuid)
 
-            # 정보 새로고침
+            # Refresh information
             Account(ui, ticker)
             Order_Wait(ui, ticker)
             Order_Complete(ui, ticker)
 
-        # 버튼 클릭 시그널을 연결합니다.
-        # 이 함수(Order_Wait)는 새로고침 시마다 호출되므로, 중복 연결을 방지하기 위해
-        # 기존의 연결을 먼저 끊고(disconnect) 다시 연결(connect)합니다.
+        # Connect the button's clicked signal, disconnecting first to prevent duplicates.
         try:
             ui.pushButton_10.clicked.disconnect()
         except RuntimeError:
-            # 연결이 없는 경우 RuntimeError가 발생할 수 있으므로 pass 처리
+            # A RuntimeError can occur if there's no connection, so we pass.
             pass
         ui.pushButton_10.clicked.connect(cancel_selected_orders)
     else:
-        # 미체결 주문이 없을 경우 테이블 비우기
+        # Clear the table if there are no open orders
         ui.tableView_3.setModel(QStandardItemModel())
 
-# 완료/취소된 주문을 UI에 업데이트하는 함수
+# Function to update completed/cancelled orders on the UI
 def Order_Complete(ui, ticker):
     """
-    API를 통해 최근 1시간 내의 완료/취소된 주문 내역을 가져와 UI 테이블뷰에 표시합니다.
-    - DataFrameModel을 사용하여 간단하게 표시
+    Fetches completed/cancelled orders from the last hour via the API and displays them in the UI.
+    - Uses DataFrameModel for simple display.
     """
     time_close = QDateTime.currentDateTime()
     utc_time = time_close.toUTC()
@@ -226,49 +269,49 @@ def Order_Complete(ui, ticker):
         header = ui.tableView_4.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
-# 캔들 데이터 저장을 위한 전역 DataFrame
-candle_df_filterd_display = pd.DataFrame()  # UI 표시용
-candle_df_features = pd.DataFrame()         # 기술적 지표 포함 전체 데이터용
+# Global DataFrames for candle data
+candle_df_filterd_display = pd.DataFrame()  # For UI display
+candle_df_features = pd.DataFrame()         # For technical indicators
 
-# 초기 캔들 데이터를 로드하고 UI에 표시하는 함수
+# Function to load and display initial candle data
 def Candle_initial_update(ui, ticker, path2):
     """
-    프로그램 시작 시 초기 캔들 데이터를 설정합니다.
-    현재는 Upbit API를 통해 최근 60개의 1분봉 데이터를 가져와 UI에 표시하는 간단한 로직을 사용합니다.
-    (주석 처리된 코드는 로컬 데이터와 API 데이터를 병합하는 더 복잡한 로직의 흔적입니다.)
+    Sets the initial candle data when the application starts.
+    Currently uses a simple logic to fetch the last 60 1-minute candles from the Upbit API.
+    (Commented out code contains remnants of a more complex logic for merging local and API data).
     """
     global candle_df_filterd_display
     global candle_df_features
 
-    # API를 통해 최근 60개의 1분봉 데이터를 가져옵니다.
+    # Fetch the last 60 1-minute candles via the API
     candle_df = function.candle(1, ticker, 60, 0)
 
-    # 데이터가 없을 경우 함수 종료
+    # Exit if data could not be fetched
     if candle_df.empty:
-        print("[ERROR] 초기 캔들 데이터를 가져오지 못했습니다.")
+        print("[ERROR] Could not fetch initial candle data.")
         return
 
-    # 첫 번째 행은 현재 진행중인 캔들이므로 제외
+    # Exclude the first row as it's the currently forming candle
     candle_df = candle_df.iloc[1:]
 
-    # 컬럼 이름 변경
+    # Rename columns
     candle_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
                               'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
 
-    # UI에 티커 이름 설정
+    # Set the ticker name on the UI
     if not candle_df.empty:
         ui.label.setText(candle_df["market"].iloc[0])
 
-    # 표시할 컬럼만 선택하고, 최신순으로 정렬
+    # Select only the columns to be displayed and sort by most recent
     candle_df_filterd_display = candle_df[['UTC', 'KST', 'close', 'open', 'high', 'low']].iloc[::-1].reset_index(drop=True)
 
-    # 기술적 지표를 계산합니다. (UI 표시용 데이터와 별개로 전체 데이터 사용)
-    # 참고: 60개 캔들만 사용하므로 장기 지표는 부정확할 수 있습니다.
+    # Calculate technical indicators (using the full dataset, not just the display version)
+    # Note: Long-term indicators may be inaccurate as only 60 candles are used.
     if not candle_df.empty:
-        candle_df_features = function_feature.data_feature_1(candle_df.iloc[::-1]) # 원본 순서대로 전달
-        print("초기 기술적 지표 계산 완료.")
+        candle_df_features = function_feature.data_feature_1(candle_df.iloc[::-1]) # Pass in original chronological order
+        print("Initial technical indicators calculated.")
 
-    # UI 테이블뷰에 모델 설정
+    # Set the model for the UI table view
     candle_model = DataFrameModel(candle_df_filterd_display)
     ui.tableView_5.setModel(candle_model)
     ui.tableView_5.resizeColumnsToContents()
@@ -276,46 +319,46 @@ def Candle_initial_update(ui, ticker, path2):
     header = ui.tableView_5.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.Stretch)
 
-# 1분마다 캔들 데이터를 업데이트하는 함수
+# Function to update candle data every minute
 def Candle_update(time_qt, ticker, ui):
     """
-    1분마다 새로운 캔들 데이터를 API에서 가져와 기존 데이터에 추가하고 UI를 업데이트합니다.
+    Fetches the new 1-minute candle from the API every minute, adds it to the existing data, and updates the UI.
     """
     global candle_df_filterd_display
     global candle_df_features
 
-    # API 요청을 위한 시간 형식 변환
+    # Convert time format for the API request
     time_8061 = time_qt.toString("yyyy-MM-dd'T'HH:mm") + ":00+09:00"
 
-    # 최신 1분봉 데이터 가져오기
+    # Fetch the latest 1-minute candle
     minute_df = function.candle(1, ticker, 1, time_8061)
     if not minute_df.empty:
         minute_df.rename(columns={'candle_date_time_utc': 'UTC', 'candle_date_time_kst': 'KST', 'trade_price': 'close',
                                   'opening_price': 'open', 'high_price': 'high', 'low_price': 'low'}, inplace=True)
         minute_df_filterd = minute_df[['UTC', 'KST', 'close', 'open', 'high', 'low']]
 
-        # 기존 데이터와 병합하고 최신 데이터가 위로 오도록 정렬
+        # Prepend the new candle to the existing data and sort by most recent
         candle_df_filterd_display = pd.concat([minute_df_filterd, candle_df_filterd_display]).reset_index(drop=True)
 
-        # 기술적 지표 데이터도 업데이트
-        # 새로운 캔들을 기존 전체 데이터에 추가하고, 마지막 60개에 대해 다시 지표 계산
+        # Update technical indicator data
+        # Add the new candle to the full dataset and recalculate indicators on the last N candles to prevent performance degradation
         if 'candle_df_features' in globals() and not candle_df_features.empty:
-             # candle_df_features의 원본 순서는 시간 오름차순이라고 가정
+             # Assuming candle_df_features is in ascending chronological order
             temp_df_features = pd.concat([candle_df_features, minute_df]).reset_index(drop=True)
-            # 최근 200개 (또는 지표 계산에 필요한 최대 기간) 데이터로 재계산하여 성능 저하 방지
+            # Recalculate on the last 200 candles (or max period needed for indicators) to avoid slowdown
             candle_df_features = function_feature.data_feature_1(temp_df_features.tail(200))
 
-        # UI 테이블뷰 업데이트 (최대 70개 행 유지)
+        # Update the UI table view (maintaining a max of 70 rows)
         if len(candle_df_filterd_display) > 70:
             candle_df_filterd_display = candle_df_filterd_display.iloc[:70]
 
         candle_model = DataFrameModel(candle_df_filterd_display)
         ui.tableView_5.setModel(candle_model)
 
-# 콤보박스에서 선택된 호가 유형에 해당하는 실제 가격을 반환하는 함수
+# Function to get the actual price for a selected order book level from the combo box
 def hoga(ticker, ord_type_hoga):
     """
-    'Ask1', 'Bid3' 등과 같은 문자열을 받아 실제 호가로 변환합니다.
+    Converts a string like 'Ask1' or 'Bid3' into an actual price from the order book.
     """
     hoga_list_df = function.hoga_list(ticker)
     if hoga_list_df.empty:
