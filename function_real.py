@@ -1,83 +1,115 @@
-# 필요한 라이브러리 임포트
-import jwt          # PyJWT, JWT 토큰 생성 및 검증
-import uuid         # 고유 식별자 생성
-import websockets   # 비동기 웹소켓 클라이언트
-import os           # 환경 변수 접근
-import json         # JSON 데이터 파싱
-import function_complex # 다른 모듈의 변수(avg_price) 접근
+# -*- coding: utf-8 -*-
+"""
+[File: function_real.py]
+[Author: Jules (AI Agent)]
+[Date: 2025-08-23]
 
-# Upbit 웹소켓에 연결하고 실시간 데이터를 수신하는 메인 비동기 함수
+[Summary]
+This module handles real-time data reception and processing via the Upbit WebSocket API.
+It uses an asynchronous approach (asyncio) to receive real-time ticker data and
+updates the UI with the relevant information.
+
+[Global Variables]
+- None.
+
+[Dependencies & Interconnections]
+
+[Incoming Calls (External modules calling this module)]
+- `Main.py` -> `web_socket_initial()`: Called as an asyncio task at program startup to run the WebSocket loop.
+
+[Outgoing Calls (This module calling external modules)]
+- None. (Only calls external libraries like `websockets`, etc.)
+
+[Global Variable Access]
+- `on_message()` -> `function_complex.avg_price` (READ): Reads the `avg_price` variable from the `function_complex` module
+  to calculate the real-time profit/loss percentage against the current price.
+
+[Note]
+The `web_socket_initial` function includes a `while True` loop that attempts to
+automatically reconnect after 5 seconds if the WebSocket connection is dropped.
+"""
+
+# Import necessary libraries
+import jwt          # PyJWT for creating and validating JWT tokens
+import uuid         # For generating unique identifiers
+import websockets   # Asynchronous WebSocket client
+import os           # For accessing environment variables
+import json         # For parsing JSON data
+import function_complex # To access variables from other modules (avg_price)
+import asyncio      # For the sleep function in the reconnect logic
+
+# Main asynchronous function to connect to the Upbit WebSocket and receive real-time data
 async def web_socket_initial(ui):
     """
-    Upbit의 웹소켓 서버에 연결하여 실시간 시세 데이터를 받아 UI에 업데이트합니다.
-    - JWT 토큰을 생성하여 인증합니다.
-    - 연결 성공 시, 특정 티커에 대한 구독 메시지를 전송합니다.
-    - 메시지 수신 시, 데이터를 파싱하여 UI의 텍스트 브라우저를 업데이트합니다.
-    - ui: 업데이트할 PySide6 UI 객체
+    Connects to the Upbit WebSocket server to receive real-time ticker data and update the UI.
+    - Creates a JWT token for authentication.
+    - Sends a subscription message for a specific ticker upon successful connection.
+    - Parses received messages and updates a text browser in the UI.
+    - ui: The PySide6 UI object to be updated.
     """
 
-    # 웹소켓 메시지 수신 시 호출될 내부 비동기 함수
+    # Internal async function to be called upon receiving a WebSocket message
     async def on_message(ws):
         """
-        서버로부터 메시지를 지속적으로 수신하고 처리합니다.
+        Continuously receives and processes messages from the server.
         """
         async for message in ws:
-            # 수신된 메시지(바이트)를 UTF-8 문자열로 디코딩
+            # Decode the received message (bytes) into a UTF-8 string
             data = message.decode('utf-8')
-            # JSON 형식의 문자열을 파이썬 딕셔너리로 파싱
+            # Parse the JSON formatted string into a Python dictionary
             json_data = json.loads(data)
-            # 'trade_price' (현재가) 값을 추출
+            # Extract the 'trade_price' (current price)
             trade_price = json_data.get("trade_price", "N/A")
 
-            # function_complex 모듈의 전역 변수 'avg_price' (평균 매수 단가) 가져오기
+            # Get the global 'avg_price' (average buy price) from the function_complex module
             avg_price = function_complex.avg_price
 
-            # 평균 매수 단가 대비 현재가의 등락률 계산
+            # Calculate the percentage difference between the current price and the average buy price
             price_difference_percentage = 0
             if avg_price != 0 and trade_price != "N/A":
                 try:
                     price_difference_percentage = round((float(trade_price) - float(avg_price)) / float(avg_price) * 100, 3)
                 except ValueError:
-                    price_difference_percentage = 0 # 가격 정보가 숫자가 아닐 경우 예외 처리
+                    price_difference_percentage = 0 # Handle cases where price is not a number
 
-            # UI의 textBrowser_4에 현재가, 평균 매수 단가, 등락률을 표시
+            # Display the current price, average buy price, and percentage difference in the UI's textBrowser_4
             ui.textBrowser_4.setText(f"{str(trade_price)} / {avg_price} / {price_difference_percentage}%")
 
-    # 웹소켓 연결 성공 시 호출될 내부 비동기 함수
+    # Internal async function to be called upon successful WebSocket connection
     async def on_connect(ws):
         """
-        웹소켓 연결이 성공적으로 이루어졌을 때, 구독 메시지를 전송하고 UI에 상태를 로깅합니다.
+        Sends a subscription message and logs the status to the UI upon successful connection.
         """
-        log_message = "[INFO] 실시간 시세 서버에 연결되었습니다."
+        log_message = "[INFO] Connected to real-time ticker server."
         print(log_message)
         ui.textBrowser_2.append(log_message)
-        # 구독할 내용을 JSON 형식으로 만들어 서버에 전송
-        # ticket: 고유 식별자, type: 구독 종류(ticker), codes: 티커 목록
+        # Create a subscription message in JSON format and send it to the server
+        # ticket: unique identifier, type: subscription type (ticker), codes: list of tickers
         await ws.send('[{"ticket":"UNIQUE_TICKET"},{"type":"ticker", "codes":["KRW-XRP"], "isOnlyRealtime" : "True"}]')
 
-    # 웹소켓 에러 발생 시 호출될 내부 비동기 함수
+    # Internal async function to be called when a WebSocket error occurs
     async def on_error(ws, err):
         """
-        웹소켓 통신 중 에러가 발생했을 때 호출됩니다. UI에 에러를 로깅합니다.
+        Called when a WebSocket communication error occurs. Logs the error to the UI.
         """
-        log_message = f"[ERROR] 실시간 시세 서버 에러: {err}"
+        log_message = f"[ERROR] Real-time ticker server error: {err}"
         print(log_message)
         ui.textBrowser_2.append(log_message)
 
-    # 웹소켓 연결 종료 시 호출될 내부 비동기 함수
+    # Internal async function to be called when the WebSocket connection is closed
     async def on_close(ws, code, reason):
         """
-        웹소켓 연결이 종료되었을 때 호출됩니다. UI에 상태를 로깅합니다.
+        Called when the WebSocket connection is closed. Logs the status to the UI.
         """
-        log_message = f"[INFO] 실시간 시세 서버 연결이 종료되었습니다. Code: {code}, Reason: {reason}"
+        log_message = f"[INFO] Real-time ticker server connection closed. Code: {code}, Reason: {reason}"
         print(log_message)
         ui.textBrowser_2.append(log_message)
 
-    # 웹소켓 인증을 위한 JWT 토큰 생성
+    # Create JWT token for WebSocket authentication
     access_key = os.environ.get('UPBIT_OPEN_API_ACCESS_KEY')
     secret_key = os.environ.get('UPBIT_OPEN_API_SECRET_KEY')
 
-    # 키가 없는 경우 함수 종료
+    # Terminate the function if keys are not found
     if not access_key or not secret_key:
         print("API keys are not set in environment variables.")
         return
@@ -90,29 +122,29 @@ async def web_socket_initial(ui):
     authorization_token = f'Bearer {jwt_token}'
     headers = {"Authorization": authorization_token}
 
-    # Upbit 웹소켓 서버 주소
+    # Upbit WebSocket server address
     uri = "wss://api.upbit.com/websocket/v1"
 
-    # 웹소켓 서버에 연결 및 통신 시작
-    while True: # 재연결 로직을 위해 while 루프 사용
+    # Connect to the WebSocket server and start communication
+    while True: # Use a while loop for reconnection logic
         try:
             async with websockets.connect(uri, extra_headers=headers) as ws:
                 await on_connect(ws)
                 await on_message(ws)
         except websockets.exceptions.ConnectionClosed as e:
-            # 정상적인 종료가 아닐 때만 로그를 남깁니다.
+            # Log only if the connection closure was not normal
             if not e.code == 1000:
-                log_message = f"[ERROR] 웹소켓 연결이 비정상적으로 종료되었습니다: {e}"
+                log_message = f"[ERROR] WebSocket connection closed unexpectedly: {e}"
                 print(log_message)
                 ui.textBrowser_2.append(log_message)
             await on_close(ws, e.code, e.reason)
         except Exception as e:
-            log_message = f"[ERROR] 웹소켓 처리 중 예외 발생: {e}"
+            log_message = f"[ERROR] An exception occurred during WebSocket processing: {e}"
             print(log_message)
             ui.textBrowser_2.append(log_message)
 
-        # 재연결 시도 전 잠시 대기
-        reconnect_message = "[INFO] 5초 후 실시간 시세 서버에 재연결을 시도합니다..."
+        # Wait a moment before attempting to reconnect
+        reconnect_message = "[INFO] Attempting to reconnect to the real-time server in 5 seconds..."
         print(reconnect_message)
         ui.textBrowser_2.append(reconnect_message)
         await asyncio.sleep(5)

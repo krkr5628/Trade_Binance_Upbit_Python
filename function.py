@@ -1,4 +1,39 @@
-# 필요한 라이브러리 임포트
+# -*- coding: utf-8 -*-
+"""
+[File: function.py]
+[Author: Jules (AI Agent)]
+[Date: 2025-08-23]
+
+[Summary]
+This module handles all low-level communication with the Upbit REST API.
+It includes core functions for API requests, response handling, and authentication
+header generation for direct communication with the Upbit server.
+
+[Global Variables]
+- `feature_data` (pd.DataFrame): Stores technical indicator settings loaded via the `file_load3` function. (Not directly used by other functions at the moment).
+
+[Dependencies & Interconnections]
+
+[Incoming Calls (External modules calling this module)]
+- `Main.py` -> `file_load()`: To load API keys.
+- `Main.py` -> `open_order()`: To execute a buy order.
+- `function_complex.py` -> `hold_account()`: To get account balance.
+- `function_complex.py` -> `order_wait_history()`: To get open orders.
+- `function_complex.py` -> `order_close_history()`: To get closed/cancelled orders.
+- `function_complex.py` -> `hoga_list()`: To get order book data.
+- `function_complex.py` -> `candle()`: To get candle data.
+- `function_complex.py` -> `open_order()`: To execute a market sell (liquidation) order.
+- `function_complex.py` -> `close_order()`: To cancel an open order.
+- `function_complex.py` -> `file_load2()`: To load local historical candle data.
+
+[Outgoing Calls (This module calling external modules)]
+- None. (Only calls external libraries like `requests`, `jwt`, etc.)
+
+[Global Variable Access]
+- None.
+"""
+
+# Import necessary libraries
 import pandas as pd
 import jwt
 import hashlib
@@ -8,15 +43,15 @@ import uuid
 import json
 from urllib.parse import urlencode, unquote, quote
 
-# 전역 변수로 기술적 지표 설정 데이터를 저장할 DataFrame 초기화
+# Global DataFrame to store technical indicator settings
 feature_data = pd.DataFrame()
 
-# API 키 설정 파일을 로드하는 함수
+# Function to load API key settings file
 def file_load(path):
     """
-    지정된 경로의 CSV 파일에서 Access Key와 Secret Key를 읽어와 환경 변수에 설정합니다.
-    Upbit API 서버 URL도 환경 변수에 설정합니다.
-    - path: 설정 파일 경로
+    Reads Access Key and Secret Key from a CSV file at the specified path and sets them as environment variables.
+    Also sets the Upbit API server URL as an environment variable.
+    - path: Path to the settings file.
     """
     try:
         data = pd.read_csv(path)
@@ -26,67 +61,67 @@ def file_load(path):
         os.environ['UPBIT_OPEN_API_SECRET_KEY'] = Secret_Key
         os.environ['UPBIT_OPEN_API_SERVER_URL'] = 'https://api.upbit.com'
     except FileNotFoundError:
-        print(f"[ERROR] 설정 파일을 찾을 수 없습니다: {path}")
+        print(f"[ERROR] Settings file not found: {path}")
     except Exception as e:
-        print(f"[ERROR] 설정 파일 로드 중 오류 발생: {e}")
+        print(f"[ERROR] Error loading settings file: {e}")
 
-# 일반 CSV 파일을 로드하는 함수
+# Function to load a general CSV file
 def file_load2(path):
     """
-    지정된 경로의 CSV 파일을 읽어 DataFrame으로 반환합니다. (주로 과거 데이터 로드용)
-    - path: 데이터 파일 경로
+    Reads a CSV file from the specified path and returns it as a DataFrame (mainly for historical data).
+    - path: Path to the data file.
     """
     try:
         data = pd.read_csv(path)
         return data
     except FileNotFoundError:
-        print(f"[ERROR] 데이터 파일을 찾을 수 없습니다: {path}")
+        print(f"[ERROR] Data file not found: {path}")
         return pd.DataFrame()
     except Exception as e:
-        print(f"[ERROR] 데이터 파일 로드 중 오류 발생: {e}")
+        print(f"[ERROR] Error loading data file: {e}")
         return pd.DataFrame()
 
-# 기술적 지표 설정 파일을 로드하는 함수
+# Function to load technical indicator settings
 def file_load3(path):
     """
-    지정된 경로의 CSV 파일에서 기술적 지표 설정을 읽어 전역 변수 `feature_data`에 저장합니다.
-    - path: 기술적 지표 설정 파일 경로
+    Reads technical indicator settings from a CSV file at the specified path and stores them in the global `feature_data` DataFrame.
+    - path: Path to the technical indicator settings file.
     """
     global feature_data
     try:
         data = pd.read_csv(path)
         feature_data = pd.DataFrame(data)
     except FileNotFoundError:
-        print(f"[ERROR] 지표 설정 파일을 찾을 수 없습니다: {path}")
+        print(f"[ERROR] Indicator settings file not found: {path}")
     except Exception as e:
-        print(f"[ERROR] 지표 설정 파일 로드 중 오류 발생: {e}")
+        print(f"[ERROR] Error loading indicator settings file: {e}")
 
-# 특정 티커의 호가 정보를 조회하는 함수
+# Function to get order book information for a specific ticker
 def hoga_list(ticker):
     """
-    Upbit API를 통해 특정 티커의 현재 호가 정보를 받아와 DataFrame으로 반환합니다.
-    - ticker: 조회할 티커 (예: "KRW-XRP")
+    Fetches the current order book for a specific ticker from the Upbit API and returns it as a DataFrame.
+    - ticker: The ticker to query (e.g., "KRW-XRP").
     """
     url = f"https://api.upbit.com/v1/orderbook?markets={ticker}&level=0"
     headers = {"accept": "application/json"}
     try:
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # 2xx 응답이 아닐 경우 예외 발생
+        response.raise_for_status()  # Raise an exception for non-2xx responses
         data = response.json()
         orderbook_units = data[0]['orderbook_units']
         df = pd.DataFrame(orderbook_units, columns=['ask_price', 'bid_price'])
         return df
     except requests.exceptions.RequestException as e:
-        print(f"[API ERROR] 호가 정보 조회 실패: {e}")
+        print(f"[API ERROR] Failed to fetch order book: {e}")
         return pd.DataFrame()
     except (json.JSONDecodeError, KeyError) as e:
-        print(f"[API ERROR] 호가 정보 파싱 실패: {e}")
+        print(f"[API ERROR] Failed to parse order book data: {e}")
         return pd.DataFrame()
 
-# 거래 가능한 모든 마켓 정보를 조회하는 함수
+# Function to get information on all available markets
 def Market_Data():
     """
-    Upbit API를 통해 거래 가능한 모든 마켓의 정보를 조회합니다.
+    Fetches information on all available markets from the Upbit API.
     - GET /v1/market/all
     """
     url = "https://api.upbit.com/v1/market/all"
@@ -97,18 +132,18 @@ def Market_Data():
         df = pd.DataFrame(data)
         return df
     except requests.exceptions.RequestException as e:
-        print(f"[API ERROR] 전체 마켓 정보 조회 실패: {e}")
+        print(f"[API ERROR] Failed to fetch all market data: {e}")
         return pd.DataFrame()
     except json.JSONDecodeError as e:
-        print(f"[API ERROR] 전체 마켓 정보 파싱 실패: {e}")
+        print(f"[API ERROR] Failed to parse all market data: {e}")
         return pd.DataFrame()
 
-# 특정 티커의 현재가 정보를 조회하는 함수
+# Function to get current ticker information for a specific market
 def Market_Data_Specific(ticker):
     """
-    Upbit API를 통해 특정 티커의 현재 Ticker 정보를 조회합니다.
+    Fetches the current Ticker information for a specific market from the Upbit API.
     - GET /v1/ticker
-    - ticker: 조회할 티커 (예: "KRW-XRP")
+    - ticker: The ticker to query (e.g., "KRW-XRP").
     """
     url = f"https://api.upbit.com/v1/ticker?markets={ticker}"
     try:
@@ -117,16 +152,16 @@ def Market_Data_Specific(ticker):
         data = response.json()
         return pd.DataFrame(data)
     except requests.exceptions.RequestException as e:
-        print(f"[API ERROR] 특정 마켓({ticker}) 정보 조회 실패: {e}")
+        print(f"[API ERROR] Failed to fetch specific market ({ticker}) data: {e}")
         return pd.DataFrame()
     except json.JSONDecodeError as e:
-        print(f"[API ERROR] 특정 마켓({ticker}) 정보 파싱 실패: {e}")
+        print(f"[API ERROR] Failed to parse specific market ({ticker}) data: {e}")
         return pd.DataFrame()
 
-# 분봉 데이터를 조회하는 함수
+# Function to fetch minute candle data
 def candle(type, ticker, count, time):
     """
-    Upbit API를 통해 특정 티커의 분봉 데이터를 조회합니다. (최대 200개)
+    Fetches minute candle data for a specific ticker from the Upbit API (max 200 candles).
     - GET /v1/candles/minutes/{unit}
     """
     if time == 0:
@@ -141,22 +176,22 @@ def candle(type, ticker, count, time):
         data = response.json()
         return pd.DataFrame(data)
     except requests.exceptions.RequestException as e:
-        print(f"[API ERROR] 캔들 데이터 조회 실패: {e}")
+        print(f"[API ERROR] Failed to fetch candle data: {e}")
         return pd.DataFrame()
     except json.JSONDecodeError as e:
-        print(f"[API ERROR] 캔들 데이터 파싱 실패: {e}")
+        print(f"[API ERROR] Failed to parse candle data: {e}")
         return pd.DataFrame()
 
-# API 요청을 위한 공통 인증 헤더 생성 함수
+# Common function to generate authentication headers for API requests
 def _get_auth_headers(query_params=None):
     """
-    API 인증을 위한 JWT 헤더를 생성합니다.
-    - query_params: 쿼리 파라미터가 있는 경우, 해싱을 위해 전달
+    Creates JWT headers for authentication.
+    - query_params: If query parameters exist, they are passed for hashing.
     """
     access_key = os.environ.get('UPBIT_OPEN_API_ACCESS_KEY')
     secret_key = os.environ.get('UPBIT_OPEN_API_SECRET_KEY')
     if not access_key or not secret_key:
-        raise ValueError("API 키가 환경 변수에 설정되지 않았습니다.")
+        raise ValueError("API keys are not set in environment variables.")
 
     payload = {'access_key': access_key, 'nonce': str(uuid.uuid4())}
 
@@ -171,10 +206,10 @@ def _get_auth_headers(query_params=None):
     jwt_token = jwt.encode(payload, secret_key)
     return {'Authorization': f'Bearer {jwt_token}'}
 
-# 전체 계좌 잔고를 조회하는 함수
+# Function to get the full account balance
 def hold_account():
     """
-    Upbit API를 통해 현재 보유한 모든 자산의 정보를 조회합니다. (인증 필요)
+    Fetches information on all assets currently held in the account from the Upbit API (authentication required).
     - GET /v1/accounts
     """
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
@@ -185,13 +220,13 @@ def hold_account():
         data = response.json()
         return pd.DataFrame(data)
     except (requests.exceptions.RequestException, ValueError, json.JSONDecodeError) as e:
-        print(f"[API ERROR] 계좌 조회 실패: {e}")
+        print(f"[API ERROR] Failed to fetch account balance: {e}")
         return pd.DataFrame()
 
-# 주문 가능 정보를 조회하는 함수
+# Function to get order chance information
 def order_possible(ticker):
     """
-    Upbit API를 통해 특정 마켓의 주문 가능 정보를 조회합니다. (인증 필요)
+    Fetches order chance information for a specific market from the Upbit API (authentication required).
     - GET /v1/orders/chance
     """
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
@@ -203,23 +238,23 @@ def order_possible(ticker):
         data = response.json()
         return pd.DataFrame(data)
     except (requests.exceptions.RequestException, ValueError, json.JSONDecodeError) as e:
-        print(f"[API ERROR] 주문 가능 정보 조회 실패: {e}")
+        print(f"[API ERROR] Failed to fetch order chance info: {e}")
         return pd.DataFrame()
 
-# 주문을 실행하는 함수
+# Function to place an order
 def open_order(ticker, type, ord_type, volume, price, ui):
     """
-    Upbit API를 통해 지정가 또는 시장가 주문을 실행합니다. (인증 필요)
+    Places a limit or market order via the Upbit API (authentication required).
     - POST /v1/orders
     """
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
     params = {'market': ticker, 'side': type, 'ord_type': ord_type}
 
-    if ord_type == 'price': # 시장가 매수
+    if ord_type == 'price': # Market buy
         params['price'] = price
-    elif ord_type == 'market': # 시장가 매도
+    elif ord_type == 'market': # Market sell
         params['volume'] = volume
-    else: # 지정가
+    else: # Limit order
         params['volume'] = volume
         params['price'] = price
 
@@ -231,17 +266,17 @@ def open_order(ticker, type, ord_type, volume, price, ui):
         ui.textBrowser_2.append('-----ORDER SUCCESS-----')
         ui.textBrowser_2.append(json.dumps(data, indent=4))
     except (requests.exceptions.RequestException, ValueError, json.JSONDecodeError) as e:
-        print(f"[API ERROR] 주문 실패: {e}")
+        print(f"[API ERROR] Order failed: {e}")
         ui.textBrowser_2.append('-----ORDER FAILED-----')
         ui.textBrowser_2.append(str(e))
     finally:
         ui.textBrowser_2.append('--------------------')
 
 
-# 주문을 취소하는 함수
+# Function to cancel an order
 def close_order(uuid_tmp):
     """
-    Upbit API를 통해 특정 주문을 취소합니다. (인증 필요)
+    Cancels a specific order via the Upbit API (authentication required).
     - DELETE /v1/order
     """
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
@@ -258,10 +293,10 @@ def close_order(uuid_tmp):
         print(f"-----CANCEL FAILED-----: {e}")
         return None
 
-# 미체결 주문 내역을 조회하는 함수
+# Function to get the history of open orders
 def order_wait_history(ticker):
     """
-    Upbit API를 통해 특정 마켓의 미체결 주문(wait, watch) 내역을 조회합니다. (인증 필요)
+    Fetches the list of open orders (wait, watch) for a specific market from the Upbit API (authentication required).
     - GET /v1/orders/open
     """
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
@@ -273,13 +308,13 @@ def order_wait_history(ticker):
         data = response.json()
         return pd.DataFrame(data)
     except (requests.exceptions.RequestException, ValueError, json.JSONDecodeError) as e:
-        print(f"[API ERROR] 미체결 주문 조회 실패: {e}")
+        print(f"[API ERROR] Failed to fetch open orders: {e}")
         return pd.DataFrame()
 
-# 완료 또는 취소된 주문 내역을 조회하는 함수
+# Function to get the history of closed or cancelled orders
 def order_close_history(ticker, time):
     """
-    Upbit API를 통해 특정 마켓의 완료(done) 또는 취소(cancel)된 주문 내역을 조회합니다. (인증 필요)
+    Fetches the list of closed (done) or cancelled (cancel) orders for a specific market from the Upbit API (authentication required).
     - GET /v1/orders/closed
     """
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
@@ -291,5 +326,5 @@ def order_close_history(ticker, time):
         data = response.json()
         return pd.DataFrame(data)
     except (requests.exceptions.RequestException, ValueError, json.JSONDecodeError) as e:
-        print(f"[API ERROR] 완료/취소 주문 조회 실패: {e}")
+        print(f"[API ERROR] Failed to fetch closed/cancelled orders: {e}")
         return pd.DataFrame()
