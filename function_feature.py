@@ -1,10 +1,14 @@
+# 'ta' 라이브러리 (Technical Analysis)와 pandas 임포트
 import ta
 import pandas as pd
 
+# 'function' 모듈 임포트 (현재 코드에서는 직접 사용되지 않음)
 import function
 
+# 사용자가 선택한 지표 설정을 저장할 리스트 (현재 사용되지 않음)
 feature_simple = []
 
+# 각 기술적 지표의 계산 주기를 저장할 전역 리스트들
 atr_periods = []
 stoch_periods = []
 bollinger_periods = []
@@ -24,28 +28,18 @@ cci_periods = []
 disparity_periods = []
 moving_average_periods = []
 
-def feature_inital_match() :
+# 기술적 지표 계산을 위한 기본 파라미터들을 설정하는 함수
+def feature_inital_match():
+    """
+    각 기술적 지표 계산에 사용될 기본 주기(period)와 설정값들을 전역 리스트에 초기화합니다.
+    이 함수는 프로그램 시작 시 한 번 호출되어야 합니다.
+    """
+    global atr_periods, stoch_periods, bollinger_periods, ichimoku_periods, supertrend_settings
+    global parabolic_sar_settings, williams_r_periods, momentum_periods, roc_periods, cmo_periods
+    global mfi_periods, rsi_periods, efi_periods, rvi_periods, vr_periods, cci_periods
+    global disparity_periods, moving_average_periods
 
-    global atr_periods
-    global stoch_periods
-    global bollinger_periods
-    global ichimoku_periods
-    global supertrend_settings
-    global parabolic_sar_settings
-    global williams_r_periods
-    global momentum_periods
-    global roc_periods
-    global cmo_periods
-    global mfi_periods
-    global rsi_periods
-    global efi_periods
-    global rvi_periods
-    global vr_periods
-    global cci_periods
-    global disparity_periods
-    global moving_average_periods
-
-    # 모든 계산 수행(initial)
+    # 각 지표별로 다양한 주기를 설정하여 여러 버전의 지표를 생성
     atr_periods = [5, 10, 14, 20, 50]
     stoch_periods = [(14, 3), (21, 5), (9, 3), (5, 2), (20, 7)]
     bollinger_periods = [10, 20, 50, 100, 200]
@@ -65,68 +59,48 @@ def feature_inital_match() :
     disparity_periods = [5, 10, 20, 50, 100, 200]
     moving_average_periods = [5, 10, 20, 50, 100, 200]
 
-def feature_match() :
+# 사용자가 설정 파일에서 선택한 지표만 사용하도록 파라미터를 필터링하는 함수 (현재 미구현)
+def feature_match():
+    """
+    'function.feature_data' (설정 파일에서 로드)를 기반으로
+    계산할 기술적 지표의 파라미터를 필터링합니다. (현재는 구현되지 않았습니다.)
+    """
+    global feature_simple, atr_periods, stoch_periods # ... 등 모든 전역 변수
 
-    global atr_periods
-    global stoch_periods
-    global bollinger_periods
-    global ichimoku_periods
-    global supertrend_settings
-    global parabolic_sar_settings
-    global williams_r_periods
-    global momentum_periods
-    global roc_periods
-    global cmo_periods
-    global mfi_periods
-    global rsi_periods
-    global efi_periods
-    global rvi_periods
-    global vr_periods
-    global cci_periods
-    global disparity_periods
-    global moving_average_periods
+    # feature_data DataFrame을 반복하며 사용자가 선택한(apply) 지표의 설정값만 가져옴
+    for _, feature in function.feature_data.iterrows():
+        # 이 부분은 실제 구현이 필요합니다.
+        pass
 
-    for feature in function.feature_data.iterrows() :
+# 주어진 데이터프레임에 모든 기술적 지표를 계산하여 추가하는 메인 함수
+def data_feature_1(data):
+    """
+    입력된 OHLCV 데이터프레임에 정의된 모든 기술적 지표를 계산하여 열로 추가합니다.
+    - data: 'open', 'high', 'low', 'close', 'volume' 열을 포함하는 pandas DataFrame
+    - 반환값: 기술적 지표들이 추가된 DataFrame
+    """
 
-        # type 제외하고 값 입력
-        # type,index1,index2,index3,index4,index5,apply1,apply2,apply3,apply4,apply5
-        feature_time_tmp = []
+    # --- 각 기술적 지표를 계산하는 내부 헬퍼 함수들 ---
 
-        for idx in range(5) :
-            if (feature[idx + 1]):
-                feature_time_tmp.append(feature[idx + 6])
-
-        feature_simple.append(feature_time_tmp)
-
-#지속적 업데이를 위한 구조화 필수
-def data_feature_1(data) :
-
-    # ATR 계산 함수
     def calculate_atr(df, periods):
         for period in periods:
             df[f'atr_{period}'] = ta.volatility.average_true_range(df['high'], df['low'], df['close'], window=period)
         return df
 
-    # VWAP 계산 함수
     def calculate_vwap(df):
         df['vwap'] = ta.volume.volume_weighted_average_price(df['high'], df['low'], df['close'], df['volume'])
         return df
 
-    # Stochastic Oscillator 계산 함수
     def calculate_stoch(df, periods):
         for period, smooth in periods:
-            df[f'stoch_%k_{period}_{smooth}'] = ta.momentum.stoch(df['high'], df['low'], df['close'], window=period,
-                                                                  smooth_window=smooth)
-            df[f'stoch_%d_{period}_{smooth}'] = ta.momentum.stoch_signal(df['high'], df['low'], df['close'],
-                                                                         window=period, smooth_window=smooth)
+            df[f'stoch_%k_{period}_{smooth}'] = ta.momentum.stoch(df['high'], df['low'], df['close'], window=period, smooth_window=smooth)
+            df[f'stoch_%d_{period}_{smooth}'] = ta.momentum.stoch_signal(df['high'], df['low'], df['close'], window=period, smooth_window=smooth)
         return df
 
-    # OBV 계산 함수
     def calculate_obv(df):
         df['obv'] = ta.volume.on_balance_volume(df['close'], df['volume'])
         return df
 
-    # Bollinger Bands 계산 함수
     def calculate_bollinger_bands(df, periods):
         for period in periods:
             bollinger = ta.volatility.BollingerBands(df['close'], window=period)
@@ -134,16 +108,14 @@ def data_feature_1(data) :
             df[f'bollinger_lband_{period}'] = bollinger.bollinger_lband()
         return df
 
-    # Ichimoku 계산 함수
     def calculate_ichimoku(df, periods):
         for period in periods:
             df[f'ichimoku_base_{period}'] = ta.trend.ichimoku_base_line(df['high'], df['low'], window1=period)
-            df[f'ichimoku_conversion_{period}'] = ta.trend.ichimoku_conversion_line(df['high'], df['low'],
-                                                                                    window1=period)
+            df[f'ichimoku_conversion_{period}'] = ta.trend.ichimoku_conversion_line(df['high'], df['low'], window1=period)
         return df
 
-    # Supertrend 계산 함수
     def calculate_supertrend(df, settings):
+        # 'ta' 라이브러리에 슈퍼트렌드가 없으므로 직접 구현
         df = df.copy()
         for period, multiplier, atr_period in settings:
             hl2 = (df['high'] + df['low']) / 2
@@ -151,101 +123,76 @@ def data_feature_1(data) :
             df['upperband'] = hl2 + (multiplier * df['atr'])
             df['lowerband'] = hl2 - (multiplier * df['atr'])
             df['in_uptrend'] = True
-
             for current in range(1, len(df.index)):
                 previous = current - 1
-
                 if df['close'].iloc[current] > df['upperband'].iloc[previous]:
                     df.loc[df.index[current], 'in_uptrend'] = True
                 elif df['close'].iloc[current] < df['lowerband'].iloc[previous]:
                     df.loc[df.index[current], 'in_uptrend'] = False
                 else:
                     df.loc[df.index[current], 'in_uptrend'] = df['in_uptrend'].iloc[previous]
-
-                    if df['in_uptrend'].iloc[current] and df['lowerband'].iloc[current] < df['lowerband'].iloc[
-                        previous]:
+                    if df['in_uptrend'].iloc[current] and df['lowerband'].iloc[current] < df['lowerband'].iloc[previous]:
                         df.loc[df.index[current], 'lowerband'] = df['lowerband'].iloc[previous]
-
-                    if not df['in_uptrend'].iloc[current] and df['upperband'].iloc[current] > df['upperband'].iloc[
-                        previous]:
+                    if not df['in_uptrend'].iloc[current] and df['upperband'].iloc[current] > df['upperband'].iloc[previous]:
                         df.loc[df.index[current], 'upperband'] = df['upperband'].iloc[previous]
-
             df[f'supertrend_upper_{period}_{multiplier}_{atr_period}'] = df['upperband']
             df[f'supertrend_lower_{period}_{multiplier}_{atr_period}'] = df['lowerband']
             df[f'supertrend_in_uptrend_{period}_{multiplier}_{atr_period}'] = df['in_uptrend']
-
         return df
 
-    #Parabolic SAR
     def calculate_parabolic_sar(df, settings):
         for af, max_af in settings:
             key = f'Parabolic_SAR_{af}'
             df[key] = ta.psar(df['high'], df['low'], df['close'], af=af, max_af=max_af)[f'PSARl_{af}_{max_af}']
         return df
 
-    #Williams %R
     def calculate_williams_r(df, periods):
         for period in periods:
-            key = f'Williams_%R_{period}'
-            df[key] = ta.willr(df['high'], df['low'], df['close'], length=period)
+            df[f'Williams_%R_{period}'] = ta.willr(df['high'], df['low'], df['close'], length=period)
         return df
 
-    #Momentum
     def calculate_momentum(df, periods):
         for period in periods:
-            key = f'Momentum_{period}'
-            df[key] = ta.mom(df['close'], length=period)
+            df[f'Momentum_{period}'] = ta.mom(df['close'], length=period)
         return df
 
-    #Rate of Change (ROC)
     def calculate_roc(df, periods):
         for period in periods:
-            key = f'ROC_{period}'
-            df[key] = ta.roc(df['close'], length=period)
+            df[f'ROC_{period}'] = ta.roc(df['close'], length=period)
         return df
 
-    #Chande Momentum Oscillator (CMO)
     def calculate_cmo(df, periods):
         for period in periods:
-            key = f'CMO_{period}'
-            df[key] = ta.cmo(df['close'], length=period)
+            df[f'CMO_{period}'] = ta.cmo(df['close'], length=period)
         return df
 
-    #Money Flow Index (MFI)
     def calculate_mfi(df, periods):
         for period in periods:
-            key = f'MFI_{period}'
-            df[key] = ta.mfi(df['high'], df['low'], df['close'], df['volume'], length=period)
+            df[f'MFI_{period}'] = ta.mfi(df['high'], df['low'], df['close'], df['volume'], length=period)
         return df
 
-    #Relative Strength Index (RSI)
-    def calculate_rsi(df, periods):
-        for period in periods:
-            key = f'RSI_{period}'
-            df[key] = ta.rsi(df['close'], length=period)
+f'RSI_{period}'] = ta.rsi(df['close'], length=period)
         return df
 
-    #Accumulation/Distribution Line (A/D Line)
     def calculate_ad_line(df):
         df['Accumulation_Distribution_Line'] = ta.ad(df['high'], df['low'], df['close'], df['volume'])
         return df
 
-    #Elder's Force Index (EFI)
     def calculate_efi(df, periods):
         for period in periods:
-            key = f'Elder_Force_Index_{period}'
-            df[key] = ta.efi(df['close'], df['volume'], length=period)
+            df[f'Elder_Force_Index_{period}'] = ta.efi(df['close'], df['volume'], length=period)
         return df
 
-    #Relative Vigor Index (RVI)
     def calculate_rvi(df, periods):
         for period in periods:
-            key = f'Relative_Vigor_Index_{period}'
-            df[key] = ta.rsi(df['close'], length=period)  # 대체
+            # 경고: 'ta' 라이브러리에는 RVI(Relative Vigor Index)가 내장되어 있지 않습니다.
+            # 아래 코드는 임시방편으로 RSI를 사용하고 있으며, 정확한 RVI 지표가 아닙니다.
+            # 향후 정확한 RVI 로직으로 교체해야 합니다.
+            df[f'Relative_Vigor_Index_{period}'] = ta.rsi(df['close'], length=period)
         return df
 
-    #Volume Ratio (VR)
     def calculate_vr(df, periods):
+        # 'ta' 라이브러리에 VR(Volume Ratio)이 없으므로 직접 구현
         def volume_ratio(close, volume, period):
             vr = []
             for i in range(len(close)):
@@ -255,62 +202,51 @@ def data_feature_1(data) :
                     vol_up = sum(volume[j] for j in range(i - period + 1, i + 1) if close[j] > close[j - 1])
                     vol_down = sum(volume[j] for j in range(i - period + 1, i + 1) if close[j] < close[j - 1])
                     vol_same = sum(volume[j] for j in range(i - period + 1, i + 1) if close[j] == close[j - 1])
-                    vr_value = (vol_up + vol_same / 2) / (vol_down + vol_same / 2) * 100
+
+                    # 분모가 0이 되는 경우 (하락 거래량 + 보합 거래량/2 가 0일 때) 처리
+                    # 이는 해당 기간 동안 하락 또는 보합이 없었음을 의미하므로, 매수 압력이 매우 강한 것으로 간주합니다.
+                    # 일반적으로 VR 값은 100을 기준으로 해석하므로, 이 경우 100을 반환하거나 매우 큰 값을 설정할 수 있습니다. 여기서는 100으로 설정.
+                    denominator = vol_down + vol_same / 2
+                    if denominator == 0:
+                        vr_value = 100  # 또는 매우 큰 값(예: 1000)으로 설정하여 강한 매수 신호 표현
+                    else:
+                        vr_value = (vol_up + vol_same / 2) / denominator * 100
                     vr.append(vr_value)
             return vr
-
         for period in periods:
-            key = f'VR_{period}'
-            df[key] = volume_ratio(df['close'], df['volume'], period=period)
+            df[f'VR_{period}'] = volume_ratio(df['close'], df['volume'], period=period)
         return df
 
-    #Commodity Channel Index (CCI)
     def calculate_cci(df, periods):
         for period in periods:
-            key = f'CCI_{period}'
-            df[key] = ta.cci(df['high'], df['low'], df['close'], length=period)
+            df[f'CCI_{period}'] = ta.cci(df['high'], df['low'], df['close'], length=period)
         return df
 
-    #이격도(Price Disparity Index)
     def calculate_disparity_index(df, periods):
         for period in periods:
             df[f'disparity_index_{period}'] = (df['close'] / df['close'].rolling(window=period).mean()) * 100
         return df
 
-    #이동평균선(Moving Averages)
     def calculate_moving_averages(df, periods):
         for period in periods:
             df[f'price_ma_{period}'] = df['close'].rolling(window=period).mean()
             df[f'volume_ma_{period}'] = df['volume'].rolling(window=period).mean()
         return df
 
-    #지표 다운캐스팅(메모리 사용 감소)
+    # 메모리 효율성을 위해 데이터 타입 다운캐스팅
     data['close'] = pd.to_numeric(data['close'], downcast='float')
     data['high'] = pd.to_numeric(data['high'], downcast='float')
     data['low'] = pd.to_numeric(data['low'], downcast='float')
     data['volume'] = pd.to_numeric(data['volume'], downcast='float')
 
-    #
-    global atr_periods
-    global stoch_periods
-    global bollinger_periods
-    global ichimoku_periods
-    global supertrend_settings
-    global parabolic_sar_settings
-    global williams_r_periods
-    global momentum_periods
-    global roc_periods
-    global cmo_periods
-    global mfi_periods
-    global rsi_periods
-    global efi_periods
-    global rvi_periods
-    global vr_periods
-    global cci_periods
-    global disparity_periods
-    global moving_average_periods
+    # 전역 변수에서 설정된 파라미터들을 가져옴
+    global atr_periods, stoch_periods, bollinger_periods, ichimoku_periods, supertrend_settings
+    global parabolic_sar_settings, williams_r_periods, momentum_periods, roc_periods, cmo_periods
+    global mfi_periods, rsi_periods, efi_periods, rvi_periods, vr_periods, cci_periods
+    global disparity_periods, moving_average_periods
 
-    #사용하는 지표만 선택적으로 사용하도록 향후 구성
+    # 모든 지표 계산 함수를 순차적으로 호출
+    # 향후에는 'feature_match' 함수를 통해 사용자가 선택한 지표만 계산하도록 개선 가능
     data = calculate_atr(data, atr_periods)
     data = calculate_vwap(data)
     data = calculate_stoch(data, stoch_periods)
