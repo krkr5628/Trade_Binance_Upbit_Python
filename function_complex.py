@@ -262,6 +262,12 @@ def Candle_initial_update(ui, ticker, path2):
     # 표시할 컬럼만 선택하고, 최신순으로 정렬
     candle_df_filterd_display = candle_df[['UTC', 'KST', 'close', 'open', 'high', 'low']].iloc[::-1].reset_index(drop=True)
 
+    # 기술적 지표를 계산합니다. (UI 표시용 데이터와 별개로 전체 데이터 사용)
+    # 참고: 60개 캔들만 사용하므로 장기 지표는 부정확할 수 있습니다.
+    if not candle_df.empty:
+        candle_df_features = function_feature.data_feature_1(candle_df.iloc[::-1]) # 원본 순서대로 전달
+        print("초기 기술적 지표 계산 완료.")
+
     # UI 테이블뷰에 모델 설정
     candle_model = DataFrameModel(candle_df_filterd_display)
     ui.tableView_5.setModel(candle_model)
@@ -291,9 +297,13 @@ def Candle_update(time_qt, ticker, ui):
         # 기존 데이터와 병합하고 최신 데이터가 위로 오도록 정렬
         candle_df_filterd_display = pd.concat([minute_df_filterd, candle_df_filterd_display]).reset_index(drop=True)
 
-        # 기술적 지표 데이터도 업데이트 (현재 주석 처리)
-        # candle_df_features = pd.concat([candle_df_features, minute_df_filterd]).reset_index(drop=True)
-        # candle_df_features = function_feature.data_feature_1(candle_df_features, 60)
+        # 기술적 지표 데이터도 업데이트
+        # 새로운 캔들을 기존 전체 데이터에 추가하고, 마지막 60개에 대해 다시 지표 계산
+        if 'candle_df_features' in globals() and not candle_df_features.empty:
+             # candle_df_features의 원본 순서는 시간 오름차순이라고 가정
+            temp_df_features = pd.concat([candle_df_features, minute_df]).reset_index(drop=True)
+            # 최근 200개 (또는 지표 계산에 필요한 최대 기간) 데이터로 재계산하여 성능 저하 방지
+            candle_df_features = function_feature.data_feature_1(temp_df_features.tail(200))
 
         # UI 테이블뷰 업데이트 (최대 70개 행 유지)
         if len(candle_df_filterd_display) > 70:

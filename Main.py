@@ -108,10 +108,15 @@ def main():
 
         # 매 분 5초마다 캔들 데이터 업데이트
         if time.time().second() == 5:
-           function_complex.Candle_update(time, ticker, ui)
+            function_complex.Candle_update(time, ticker, ui)
 
-        # 예측 기능 (현재 구현되지 않음)
-        #예측
+            # 예측 기능 (더미 모델 사용)
+            # 최신 특성 데이터를 가져와 예측 함수에 전달
+            if 'candle_df_features' in function_complex.__dict__ and not function_complex.candle_df_features.empty:
+                latest_features = function_complex.candle_df_features.tail(1)
+                prediction = function_feature.get_prediction(latest_features)
+                # UI의 label_4에 예측 결과 표시
+                ui.label_4.setText(f"AI 예측: {prediction}")
 
     # 1초마다 showTime 함수를 호출하는 타이머 설정
     timer = QTimer()
@@ -128,31 +133,56 @@ def main():
     ui.pushButton_8.clicked.connect(refresh)
 
     # 'ORDER' 버튼 클릭 시 호출될 내부 함수
-    def order() :
+    def order():
+        """
+        UI에서 입력된 정보를 바탕으로 매수 주문을 실행합니다.
+        - 지정가/시장가 주문 유형을 처리합니다.
+        - 최소 주문 금액(5,000원)을 확인합니다.
+        - 입력값 유효성을 검사합니다.
+        """
+        price_volume_input = ui.textEdit_2.toPlainText()
 
-        # UI에서 주문 가격/수량 정보 가져오기
-        price_volume_order = ui.textEdit_2.toPlainText()
-
-        # 입력값이 없으면 경고 메시지 표시 후 종료
-        if not price_volume_order.strip():
-            ui.textBrowser_2.append("[경고] 매수 금액 입력")
+        # 입력값 유효성 검사
+        if not price_volume_input.strip():
+            ui.textBrowser_2.append("[경고] 주문 금액 또는 수량을 입력해주세요.")
+            return
+        try:
+            price_volume_value = float(price_volume_input)
+        except ValueError:
+            ui.textBrowser_2.append("[에러] 주문 입력값은 숫자여야 합니다.")
             return
 
-        # 최소 주문 금액 (5,000원) 체크 (현재 구현되지 않음)
-        #매수 매도 5천원 넘지 않으면 경고
+        # 주문 파라미터 초기화
+        order_price = '0'
+        order_volume = '0'
+        selected_ord_type = ui.comboBox.currentText()
 
-        # 주문 유형(지정가/시장가) 결정
-        ord_type = 'limit'  # 기본값: 지정가
-        ord_type_hoga = ui.comboBox.currentText()
-        if ord_type_hoga == 'Market' : # 시장가 선택 시
-            ord_type_hoga = 0  # 가격을 0으로 설정
-            ord_type = 'price' # 주문 유형을 'price' (시장가 매수)로 변경
-        else :
-            # 지정가 선택 시, 해당 호가 계산
-            ord_type_hoga = function_complex.hoga(ticker, ord_type_hoga)
+        # 주문 유형에 따라 파라미터 설정 및 유효성 검사
+        if selected_ord_type == 'Market':
+            ord_type = 'price'  # 시장가 매수
+            order_price = price_volume_input  # 시장가 매수 시에는 주문 총액을 price로 전달
+            # 최소 주문 금액 체크
+            if price_volume_value < 5000:
+                ui.textBrowser_2.append("[경고] 최소 주문 금액은 5,000원입니다.")
+                return
+        else:
+            ord_type = 'limit'  # 지정가
+            order_volume = price_volume_input  # 지정가 시에는 주문 수량을 volume으로 전달
+            # 지정가 가격 조회
+            hoga_price = function_complex.hoga(ticker, selected_ord_type)
+            if hoga_price is None:
+                ui.textBrowser_2.append(f"[에러] 호가({selected_ord_type}) 조회에 실패하여 주문을 중단합니다.")
+                return
+            order_price = str(hoga_price)
+            # 최소 주문 금액 체크
+            if price_volume_value * hoga_price < 5000:
+                ui.textBrowser_2.append(f"[경고] 최소 주문 금액(5,000원) 미만입니다. (현재 주문액: {price_volume_value * hoga_price:,.0f}원)")
+                return
 
-        # 계산된 정보를 바탕으로 주문 함수 호출
-        function.open_order(ticker, 'bid', ord_type, ord_type_hoga, price_volume_order, ui)
+        # 주문 실행
+        ui.textBrowser_2.append(f"주문 실행: {ticker} / {ord_type} / 가격:{order_price} / 수량:{order_volume}")
+        function.open_order(ticker, 'bid', ord_type, order_volume, order_price, ui)
+
         # 주문 후 정보 새로고침
         refresh()
 

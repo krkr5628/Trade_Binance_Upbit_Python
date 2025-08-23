@@ -270,3 +270,16 @@ f'RSI_{period}'] = ta.rsi(df['close'], length=period)
     data = calculate_moving_averages(data, moving_average_periods)
 
     return data
+
+# 더미 예측 함수
+def get_prediction(data):
+    """
+    주어진 데이터(기술적 지표)를 기반으로 더미 예측을 반환합니다.
+    현재는 실제 모델 대신 무작위로 '매수', '매도', '관망' 중 하나를 반환합니다.
+    - data: 예측에 사용할 특성(feature) 데이터 (현재는 사용되지 않음)
+    - 반환값: 예측 결과 문자열
+    """
+    import random
+    # 실제 모델이 구현되면, 이 부분은 model.predict(data)와 같은 코드로 대체됩니다.
+    predictions = ["매수", "매도", "관망"]
+    return random.choice(predictions)
